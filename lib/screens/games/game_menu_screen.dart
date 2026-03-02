@@ -53,14 +53,14 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
                         onPressed: () => context.pop(),
-                        icon: const Icon(
-                          Icons.arrow_back_rounded,
-                          size: 18,
-                        ),
+                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
                         label: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('Back', style: GoogleFonts.fredoka(fontSize: 16)),
+                            Text(
+                              'Back',
+                              style: GoogleFonts.fredoka(fontSize: 16),
+                            ),
                             const SizedBox(width: 6),
                             _KeyBadge('Esc'),
                           ],
@@ -103,15 +103,9 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                     ),
                     const SizedBox(height: 14),
                     // Placeholder – coming soon
-                    _ComingSoonCard(
-                      emoji: '🫧',
-                      title: 'Word Bubbles',
-                    ),
+                    _ComingSoonCard(emoji: '🫧', title: 'Word Bubbles'),
                     const SizedBox(height: 14),
-                    _ComingSoonCard(
-                      emoji: '🏎️',
-                      title: 'Speed Chase',
-                    ),
+                    _ComingSoonCard(emoji: '🏎️', title: 'Speed Chase'),
                   ],
                 ),
               ),
@@ -196,11 +190,7 @@ class _GameCard extends StatelessWidget {
               const SizedBox(width: 8),
               _KeyBadge(shortcut),
               const SizedBox(width: 4),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 18,
-                color: color,
-              ),
+              Icon(Icons.arrow_forward_ios_rounded, size: 18, color: color),
             ],
           ),
         ),

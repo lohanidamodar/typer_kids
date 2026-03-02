@@ -418,8 +418,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                               difficulty: d,
                               index: d.index + 1,
                               selected: selected,
-                              onTap: () =>
-                                  setState(() => _difficulty = d),
+                              onTap: () => setState(() => _difficulty = d),
                             ),
                           ),
                         );
@@ -534,7 +533,9 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 1),
                 child: Icon(
-                  alive ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  alive
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
                   color: alive ? AppColors.incorrect : Colors.grey.shade300,
                   size: 22,
                 ),
@@ -605,8 +606,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
               ),
             ),
             // Falling words
-            for (final w in _words)
-              _buildWordBubble(w, areaW, areaH),
+            for (final w in _words) _buildWordBubble(w, areaW, areaH),
             // Empty state hint
             if (_words.isEmpty)
               Center(
@@ -717,8 +717,8 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
           color: noMatch
               ? AppColors.incorrect.withValues(alpha: 0.6)
               : hasMatch
-                  ? AppColors.primary.withValues(alpha: 0.6)
-                  : Colors.grey.shade300,
+              ? AppColors.primary.withValues(alpha: 0.6)
+              : Colors.grey.shade300,
           width: 2,
         ),
         boxShadow: [
@@ -746,18 +746,15 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                 color: noMatch
                     ? AppColors.incorrect
                     : hasInput
-                        ? AppColors.textPrimary
-                        : Colors.grey.shade400,
+                    ? AppColors.textPrimary
+                    : Colors.grey.shade400,
               ),
             ),
           ),
           if (hasInput)
             Text(
               '⌫',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey.shade400,
-              ),
+              style: TextStyle(fontSize: 18, color: Colors.grey.shade400),
             ),
         ],
       ),
@@ -785,8 +782,14 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   }
 
   Widget _buildGameOver() {
-    final minutes = _gameDuration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = _gameDuration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final minutes = _gameDuration.inMinutes
+        .remainder(60)
+        .toString()
+        .padLeft(2, '0');
+    final seconds = _gameDuration.inSeconds
+        .remainder(60)
+        .toString()
+        .padLeft(2, '0');
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -988,7 +991,9 @@ class _DifficultyCard extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary.withValues(alpha: 0.12) : Colors.white,
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected ? AppColors.primary : Colors.grey.shade300,
@@ -1159,7 +1164,10 @@ class _QuitDialogState extends State<_QuitDialog> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Quit Game?',
-          style: GoogleFonts.fredoka(fontSize: 24, color: AppColors.textPrimary),
+          style: GoogleFonts.fredoka(
+            fontSize: 24,
+            color: AppColors.textPrimary,
+          ),
         ),
         content: Text(
           'Your current score will be lost.',
@@ -1171,7 +1179,10 @@ class _QuitDialogState extends State<_QuitDialog> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Resume', style: GoogleFonts.fredoka(color: AppColors.primary)),
+                Text(
+                  'Resume',
+                  style: GoogleFonts.fredoka(color: AppColors.primary),
+                ),
                 _badge('Esc', AppColors.primary),
               ],
             ),
@@ -1181,7 +1192,10 @@ class _QuitDialogState extends State<_QuitDialog> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Quit', style: GoogleFonts.fredoka(color: AppColors.incorrect)),
+                Text(
+                  'Quit',
+                  style: GoogleFonts.fredoka(color: AppColors.incorrect),
+                ),
                 _badge('Q', AppColors.incorrect),
               ],
             ),

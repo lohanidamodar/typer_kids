@@ -229,8 +229,10 @@ class _SandboxScreenState extends State<SandboxScreen> {
                         label: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('Back',
-                                style: GoogleFonts.fredoka(fontSize: 16)),
+                            Text(
+                              'Back',
+                              style: GoogleFonts.fredoka(fontSize: 16),
+                            ),
                             const SizedBox(width: 6),
                             _keyBadge('Esc', AppColors.textSecondary),
                           ],
@@ -283,8 +285,7 @@ class _SandboxScreenState extends State<SandboxScreen> {
                               difficulty: d,
                               index: d.index + 1,
                               selected: selected,
-                              onTap: () =>
-                                  setState(() => _difficulty = d),
+                              onTap: () => setState(() => _difficulty = d),
                             ),
                           ),
                         );
@@ -335,10 +336,8 @@ class _SandboxScreenState extends State<SandboxScreen> {
   // ── Typing ────────────────────────────────────────────────────────────────
 
   Widget _buildTyping() {
-    final minutes =
-        _elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds =
-        _elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final minutes = _elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = _elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -353,8 +352,10 @@ class _SandboxScreenState extends State<SandboxScreen> {
             padding: const EdgeInsets.only(right: 16),
             child: Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
@@ -383,10 +384,14 @@ class _SandboxScreenState extends State<SandboxScreen> {
               children: [
                 // Live stats
                 Container(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
@@ -420,8 +425,8 @@ class _SandboxScreenState extends State<SandboxScreen> {
                         color: _accuracy >= 90
                             ? AppColors.correct
                             : _accuracy >= 70
-                                ? AppColors.warning
-                                : AppColors.incorrect,
+                            ? AppColors.warning
+                            : AppColors.incorrect,
                       ),
                       _LiveStat(
                         icon: Icons.text_fields_rounded,
@@ -449,9 +454,7 @@ class _SandboxScreenState extends State<SandboxScreen> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Center(
-                      child: _buildTypingDisplay(),
-                    ),
+                    child: Center(child: _buildTypingDisplay()),
                   ),
                 ),
                 // Focus prompt
@@ -470,8 +473,11 @@ class _SandboxScreenState extends State<SandboxScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.mouse_rounded,
-                              color: AppColors.secondary, size: 18),
+                          const Icon(
+                            Icons.mouse_rounded,
+                            color: AppColors.secondary,
+                            size: 18,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'Click here and start typing!',
@@ -541,8 +547,10 @@ class _SandboxScreenState extends State<SandboxScreen> {
                 borderRadius: BorderRadius.circular(3),
                 border: state == CharState.current
                     ? const Border(
-                        bottom:
-                            BorderSide(color: AppColors.secondary, width: 3),
+                        bottom: BorderSide(
+                          color: AppColors.secondary,
+                          width: 3,
+                        ),
                       )
                     : null,
               ),
@@ -580,10 +588,8 @@ class _SandboxScreenState extends State<SandboxScreen> {
   }
 
   Widget _buildDone() {
-    final minutes =
-        _elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds =
-        _elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final minutes = _elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = _elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
 
     int stars;
     if (_accuracy >= 98) {
@@ -737,8 +743,10 @@ class _SandboxScreenState extends State<SandboxScreen> {
                       label: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('Back',
-                              style: GoogleFonts.fredoka(fontSize: 16)),
+                          Text(
+                            'Back',
+                            style: GoogleFonts.fredoka(fontSize: 16),
+                          ),
                           const SizedBox(width: 6),
                           _keyBadge('Esc', AppColors.textSecondary),
                         ],
@@ -831,8 +839,7 @@ class _DifficultyCard extends StatelessWidget {
               style: GoogleFonts.fredoka(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color:
-                    selected ? AppColors.secondary : AppColors.textPrimary,
+                color: selected ? AppColors.secondary : AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 2),
@@ -1015,8 +1022,10 @@ class _QuitDialogState extends State<_QuitDialog> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Leave Practice?',
-          style:
-              GoogleFonts.fredoka(fontSize: 24, color: AppColors.textPrimary),
+          style: GoogleFonts.fredoka(
+            fontSize: 24,
+            color: AppColors.textPrimary,
+          ),
         ),
         content: Text(
           'Your progress won\'t be saved.',
@@ -1028,8 +1037,10 @@ class _QuitDialogState extends State<_QuitDialog> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Stay',
-                    style: GoogleFonts.fredoka(color: AppColors.primary)),
+                Text(
+                  'Stay',
+                  style: GoogleFonts.fredoka(color: AppColors.primary),
+                ),
                 _badge('Esc', AppColors.primary),
               ],
             ),
@@ -1039,8 +1050,10 @@ class _QuitDialogState extends State<_QuitDialog> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Leave',
-                    style: GoogleFonts.fredoka(color: AppColors.incorrect)),
+                Text(
+                  'Leave',
+                  style: GoogleFonts.fredoka(color: AppColors.incorrect),
+                ),
                 _badge('L', AppColors.incorrect),
               ],
             ),
