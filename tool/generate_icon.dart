@@ -114,7 +114,9 @@ void main() {
 
   for (int i = 0; i < 12; i++) {
     final sx = 80 + rng.nextInt(size - 160);
-    final sy = rng.nextBool() ? (80 + rng.nextInt(140)) : (680 + rng.nextInt(200));
+    final sy = rng.nextBool()
+        ? (80 + rng.nextInt(140))
+        : (680 + rng.nextInt(200));
     final sc = sparkleColors[i % sparkleColors.length];
     final starSize = 14 + rng.nextInt(18);
     _drawStar(image, sx, sy, starSize, sc[0], sc[1], sc[2]);
@@ -130,15 +132,7 @@ void main() {
 
 double _lerp(double a, double b, double t) => a + (b - a) * t;
 
-bool _inRoundedRect(
-  int x,
-  int y,
-  int rx,
-  int ry,
-  int rw,
-  int rh,
-  int radius,
-) {
+bool _inRoundedRect(int x, int y, int rx, int ry, int rw, int rh, int radius) {
   // Check if point is inside rounded rect
   if (x < rx || x >= rx + rw || y < ry || y >= ry + rh) return false;
 
@@ -244,96 +238,16 @@ void _drawRoundedRectBorder(
 
 // Simple bitmap font for capital letters - 5x7 grid per character
 final Map<String, List<String>> _font = {
-  'T': [
-    'XXXXX',
-    '  X  ',
-    '  X  ',
-    '  X  ',
-    '  X  ',
-    '  X  ',
-    '  X  ',
-  ],
-  'Y': [
-    'X   X',
-    'X   X',
-    ' X X ',
-    '  X  ',
-    '  X  ',
-    '  X  ',
-    '  X  ',
-  ],
-  'P': [
-    'XXXX ',
-    'X   X',
-    'X   X',
-    'XXXX ',
-    'X    ',
-    'X    ',
-    'X    ',
-  ],
-  'E': [
-    'XXXXX',
-    'X    ',
-    'X    ',
-    'XXXX ',
-    'X    ',
-    'X    ',
-    'XXXXX',
-  ],
-  'R': [
-    'XXXX ',
-    'X   X',
-    'X   X',
-    'XXXX ',
-    'X X  ',
-    'X  X ',
-    'X   X',
-  ],
-  'K': [
-    'X   X',
-    'X  X ',
-    'X X  ',
-    'XX   ',
-    'X X  ',
-    'X  X ',
-    'X   X',
-  ],
-  'I': [
-    'XXXXX',
-    '  X  ',
-    '  X  ',
-    '  X  ',
-    '  X  ',
-    '  X  ',
-    'XXXXX',
-  ],
-  'D': [
-    'XXXX ',
-    'X   X',
-    'X   X',
-    'X   X',
-    'X   X',
-    'X   X',
-    'XXXX ',
-  ],
-  'S': [
-    ' XXXX',
-    'X    ',
-    'X    ',
-    ' XXX ',
-    '    X',
-    '    X',
-    'XXXX ',
-  ],
-  '!': [
-    '  X  ',
-    '  X  ',
-    '  X  ',
-    '  X  ',
-    '  X  ',
-    '     ',
-    '  X  ',
-  ],
+  'T': ['XXXXX', '  X  ', '  X  ', '  X  ', '  X  ', '  X  ', '  X  '],
+  'Y': ['X   X', 'X   X', ' X X ', '  X  ', '  X  ', '  X  ', '  X  '],
+  'P': ['XXXX ', 'X   X', 'X   X', 'XXXX ', 'X    ', 'X    ', 'X    '],
+  'E': ['XXXXX', 'X    ', 'X    ', 'XXXX ', 'X    ', 'X    ', 'XXXXX'],
+  'R': ['XXXX ', 'X   X', 'X   X', 'XXXX ', 'X X  ', 'X  X ', 'X   X'],
+  'K': ['X   X', 'X  X ', 'X X  ', 'XX   ', 'X X  ', 'X  X ', 'X   X'],
+  'I': ['XXXXX', '  X  ', '  X  ', '  X  ', '  X  ', '  X  ', 'XXXXX'],
+  'D': ['XXXX ', 'X   X', 'X   X', 'X   X', 'X   X', 'X   X', 'XXXX '],
+  'S': [' XXXX', 'X    ', 'X    ', ' XXX ', '    X', '    X', 'XXXX '],
+  '!': ['  X  ', '  X  ', '  X  ', '  X  ', '  X  ', '     ', '  X  '],
 };
 
 void _drawLetter(img.Image image, String letter, int kx, int ky, int keySize) {
