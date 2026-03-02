@@ -25,6 +25,7 @@ class TypingScreen extends StatefulWidget {
 class _TypingScreenState extends State<TypingScreen> {
   late TypingProvider _typingProvider;
   final FocusNode _focusNode = FocusNode();
+  final FocusNode _introFocusNode = FocusNode();
   bool _showIntro = true;
 
   @override
@@ -47,8 +48,26 @@ class _TypingScreenState extends State<TypingScreen> {
   @override
   void dispose() {
     _focusNode.dispose();
+    _introFocusNode.dispose();
     _typingProvider.dispose();
     super.dispose();
+  }
+
+  void _startLesson() {
+    setState(() => _showIntro = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
+  }
+
+  void _handleIntroKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.space) {
+      _startLesson();
+    } else if (key == LogicalKeyboardKey.escape) {
+      Navigator.of(context).pop();
+    }
   }
 
   void _handleKeyEvent(KeyEvent event) {
@@ -110,55 +129,170 @@ class _TypingScreenState extends State<TypingScreen> {
   Widget _buildIntroScreen() {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(widget.lesson.emoji, style: const TextStyle(fontSize: 72)),
-                const SizedBox(height: 16),
-                Text(
-                  widget.lesson.title,
-                  style: GoogleFonts.fredoka(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+      body: KeyboardListener(
+        focusNode: _introFocusNode,
+        autofocus: true,
+        onKeyEvent: _handleIntroKeyEvent,
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    widget.lesson.emoji,
+                    style: const TextStyle(fontSize: 72),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  widget.lesson.description,
-                  style: GoogleFonts.nunito(
-                    fontSize: 18,
-                    color: AppColors.textSecondary,
+                  const SizedBox(height: 16),
+                  Text(
+                    widget.lesson.title,
+                    style: GoogleFonts.fredoka(
+                      fontSize: 36,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                if (widget.lesson.funTip.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondaryLight.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppColors.secondaryLight.withValues(alpha: 0.5),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.lesson.description,
+                    style: GoogleFonts.nunito(
+                      fontSize: 18,
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (widget.lesson.funTip.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondaryLight.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.secondaryLight.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('💡', style: TextStyle(fontSize: 28)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              widget.lesson.funTip,
+                              style: GoogleFonts.nunito(
+                                fontSize: 16,
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                  ],
+                  if (widget.lesson.focusKeys.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    _buildFocusKeysPreview(),
+                  ],
+                  const SizedBox(height: 32),
+                  Text(
+                    '${widget.lesson.exercises.length} exercises',
+                    style: GoogleFonts.nunito(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: 240,
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: () => _startLesson(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.play_arrow_rounded,
+                            size: 28,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Let's Go!",
+                            style: GoogleFonts.fredoka(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Text(
+                              'Enter',
+                              style: GoogleFonts.robotoMono(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('💡', style: TextStyle(fontSize: 28)),
-                        const SizedBox(width: 12),
-                        Expanded(
+                        Text(
+                          'Go Back',
+                          style: GoogleFonts.nunito(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.textSecondary.withValues(
+                              alpha: 0.1,
+                            ),
+                            borderRadius: BorderRadius.circular(5),
+                            border: Border.all(
+                              color: AppColors.textSecondary.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
+                          ),
                           child: Text(
-                            widget.lesson.funTip,
-                            style: GoogleFonts.nunito(
-                              fontSize: 16,
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w500,
+                            'Esc',
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -166,66 +300,7 @@ class _TypingScreenState extends State<TypingScreen> {
                     ),
                   ),
                 ],
-                if (widget.lesson.focusKeys.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  _buildFocusKeysPreview(),
-                ],
-                const SizedBox(height: 32),
-                Text(
-                  '${widget.lesson.exercises.length} exercises',
-                  style: GoogleFonts.nunito(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: 240,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() => _showIntro = false);
-                      // Auto-focus for keyboard input after intro
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _focusNode.requestFocus();
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.play_arrow_rounded,
-                          size: 28,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          "Let's Go!",
-                          style: GoogleFonts.fredoka(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(
-                    'Go Back',
-                    style: GoogleFonts.nunito(color: AppColors.textSecondary),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -312,8 +387,8 @@ class _TypingScreenState extends State<TypingScreen> {
                     ? keySizeFromWidth
                     : keySizeFromHeight;
 
-                // Text size scales with key size
-                final textFontSize = (keySize * 0.72).clamp(20.0, 42.0);
+                // Text size scales with key size — generous for readability
+                final textFontSize = (keySize * 0.9).clamp(22.0, 48.0);
 
                 return Column(
                   children: [

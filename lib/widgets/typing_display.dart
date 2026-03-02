@@ -23,7 +23,10 @@ class TypingDisplay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.symmetric(
+        horizontal: (fontSize * 0.6).clamp(16, 32),
+        vertical: (fontSize * 0.5).clamp(14, 28),
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -37,6 +40,8 @@ class TypingDisplay extends StatelessWidget {
         ],
       ),
       child: Wrap(
+        alignment: WrapAlignment.center,
+        runAlignment: WrapAlignment.center,
         children: List.generate(text.length, (index) {
           final char = text[index];
           final state = index < charStates.length
@@ -76,12 +81,13 @@ class TypingDisplay extends StatelessWidget {
             ),
             child: Text(
               char == ' ' ? '␣' : char,
-              style: GoogleFonts.robotoMono(
+              style: GoogleFonts.sourceCodePro(
                 fontSize: fontSize,
                 fontWeight: state == CharState.current
-                    ? FontWeight.bold
-                    : FontWeight.w400,
+                    ? FontWeight.w700
+                    : FontWeight.w500,
                 color: textColor,
+                letterSpacing: fontSize * 0.05,
                 decoration: state == CharState.incorrect
                     ? TextDecoration.lineThrough
                     : null,

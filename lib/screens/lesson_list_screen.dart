@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -10,8 +11,28 @@ import '../widgets/star_rating.dart';
 import 'typing_screen.dart';
 
 /// Screen showing all available lessons grouped by category
-class LessonListScreen extends StatelessWidget {
+class LessonListScreen extends StatefulWidget {
   const LessonListScreen({super.key});
+
+  @override
+  State<LessonListScreen> createState() => _LessonListScreenState();
+}
+
+class _LessonListScreenState extends State<LessonListScreen> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      Navigator.of(context).pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,11 +44,16 @@ class LessonListScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: LessonCurriculum.categoryOrder.map((category) {
-          return _CategorySection(category: category);
-        }).toList(),
+      body: KeyboardListener(
+        focusNode: _focusNode,
+        autofocus: true,
+        onKeyEvent: _handleKeyEvent,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: LessonCurriculum.categoryOrder.map((category) {
+            return _CategorySection(category: category);
+          }).toList(),
+        ),
       ),
     );
   }

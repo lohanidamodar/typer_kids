@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -9,49 +10,99 @@ import 'settings_screen.dart';
 import 'typing_screen.dart';
 
 /// The main home screen with fun kid-friendly design
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.space) {
+      _startRecommendedLesson();
+    } else if (key == LogicalKeyboardKey.keyL) {
+      _openLessonList();
+    } else if (key == LogicalKeyboardKey.keyS) {
+      _openSettings();
+    }
+  }
+
+  void _startRecommendedLesson() {
+    final progress = Provider.of<ProgressProvider>(context, listen: false);
+    final recommended = progress.recommendedLesson;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => TypingScreen(lesson: recommended)),
+    );
+  }
+
+  void _openLessonList() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LessonListScreen()));
+  }
+
+  void _openSettings() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+  }
 
   @override
   Widget build(BuildContext context) {
     final progress = context.watch<ProgressProvider>();
 
     return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth > 700;
-            final maxContentWidth = isWide ? 560.0 : constraints.maxWidth;
+      body: KeyboardListener(
+        focusNode: _focusNode,
+        autofocus: true,
+        onKeyEvent: _handleKeyEvent,
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 700;
+              final maxContentWidth = isWide ? 560.0 : constraints.maxWidth;
 
-            return Center(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isWide ? 32 : 20,
-                  vertical: 20,
-                ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxContentWidth),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 12),
-                      _buildHeader(context),
-                      const SizedBox(height: 24),
-                      _buildMascotGreeting(progress),
-                      const SizedBox(height: 28),
-                      _buildContinueButton(context, progress),
-                      const SizedBox(height: 12),
-                      _buildAllLessonsButton(context),
-                      const SizedBox(height: 28),
-                      _buildStatsCards(context, progress),
-                      const SizedBox(height: 20),
-                      _buildSettingsButton(context),
-                      const SizedBox(height: 20),
-                    ],
+              return Center(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isWide ? 32 : 20,
+                    vertical: 20,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxContentWidth),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 12),
+                        _buildHeader(context),
+                        const SizedBox(height: 24),
+                        _buildMascotGreeting(progress),
+                        const SizedBox(height: 28),
+                        _buildContinueButton(context, progress),
+                        const SizedBox(height: 12),
+                        _buildAllLessonsButton(context),
+                        const SizedBox(height: 28),
+                        _buildStatsCards(context, progress),
+                        const SizedBox(height: 20),
+                        _buildSettingsButton(context),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -172,13 +223,7 @@ class HomeScreen extends StatelessWidget {
       width: double.infinity,
       height: 80,
       child: ElevatedButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => TypingScreen(lesson: recommended),
-            ),
-          );
-        },
+        onPressed: () => _startRecommendedLesson(),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
@@ -198,12 +243,19 @@ class HomeScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.fredoka(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        style: GoogleFonts.fredoka(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _ShortcutBadge(label: 'Enter', light: true),
+                    ],
                   ),
                   Text(
                     sublabel,
@@ -228,13 +280,16 @@ class HomeScreen extends StatelessWidget {
       width: double.infinity,
       height: 52,
       child: OutlinedButton.icon(
-        onPressed: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const LessonListScreen()));
-        },
+        onPressed: () => _openLessonList(),
         icon: const Icon(Icons.list_rounded),
-        label: Text('All Lessons', style: GoogleFonts.fredoka(fontSize: 18)),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('All Lessons', style: GoogleFonts.fredoka(fontSize: 18)),
+            const SizedBox(width: 8),
+            _ShortcutBadge(label: 'L'),
+          ],
+        ),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.primary, width: 2),
@@ -283,17 +338,52 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildSettingsButton(BuildContext context) {
     return TextButton.icon(
-      onPressed: () {
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
-      },
+      onPressed: () => _openSettings(),
       icon: const Icon(Icons.settings_rounded, color: AppColors.textSecondary),
-      label: Text(
-        'Settings',
-        style: GoogleFonts.fredoka(
-          fontSize: 16,
-          color: AppColors.textSecondary,
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Settings',
+            style: GoogleFonts.fredoka(
+              fontSize: 16,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(width: 6),
+          _ShortcutBadge(label: 'S'),
+        ],
+      ),
+    );
+  }
+}
+
+class _ShortcutBadge extends StatelessWidget {
+  final String label;
+  final bool light;
+  const _ShortcutBadge({required this.label, this.light = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: light
+            ? Colors.white.withValues(alpha: 0.25)
+            : AppColors.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: light
+              ? Colors.white.withValues(alpha: 0.4)
+              : AppColors.primary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.robotoMono(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: light ? Colors.white : AppColors.primary,
         ),
       ),
     );

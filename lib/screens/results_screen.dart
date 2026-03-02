@@ -1,5 +1,6 @@
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/theme/app_colors.dart';
@@ -25,6 +26,7 @@ class _ResultsScreenState extends State<ResultsScreen>
   late ConfettiController _confettiController;
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -48,12 +50,45 @@ class _ResultsScreenState extends State<ResultsScreen>
         _confettiController.play();
       }
     });
+
+    // Request focus after animations settle for keyboard shortcuts
+    Future.delayed(const Duration(milliseconds: 900), () {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.keyN) {
+      _goNextLesson();
+    } else if (key == LogicalKeyboardKey.keyR) {
+      _retryLesson();
+    } else if (key == LogicalKeyboardKey.escape) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  void _goNextLesson() {
+    final nextLesson = LessonCurriculum.nextLesson(widget.lesson.id);
+    if (nextLesson != null) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => TypingScreen(lesson: nextLesson)),
+      );
+    }
+  }
+
+  void _retryLesson() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => TypingScreen(lesson: widget.lesson)),
+    );
   }
 
   @override
   void dispose() {
     _confettiController.dispose();
     _slideController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -61,56 +96,60 @@ class _ResultsScreenState extends State<ResultsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: FadeTransition(
-                  opacity: _slideController,
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-                      _buildEmoji(),
-                      const SizedBox(height: 16),
-                      _buildTitle(),
-                      const SizedBox(height: 8),
-                      _buildEncouragement(),
-                      const SizedBox(height: 24),
-                      _buildStars(),
-                      const SizedBox(height: 32),
-                      _buildStatsGrid(),
-                      const SizedBox(height: 32),
-                      _buildActionButtons(context),
-                      const SizedBox(height: 20),
-                    ],
+      body: KeyboardListener(
+        focusNode: _focusNode,
+        onKeyEvent: _handleKeyEvent,
+        child: Stack(
+          children: [
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: FadeTransition(
+                    opacity: _slideController,
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 20),
+                        _buildEmoji(),
+                        const SizedBox(height: 16),
+                        _buildTitle(),
+                        const SizedBox(height: 8),
+                        _buildEncouragement(),
+                        const SizedBox(height: 24),
+                        _buildStars(),
+                        const SizedBox(height: 32),
+                        _buildStatsGrid(),
+                        const SizedBox(height: 32),
+                        _buildActionButtons(context),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-          // Confetti
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              shouldLoop: false,
-              colors: [
-                AppColors.primary,
-                AppColors.secondary,
-                AppColors.accent,
-                AppColors.starFilled,
-                AppColors.primaryLight,
-                AppColors.accentLight,
-              ],
-              numberOfParticles: 30,
-              gravity: 0.2,
+            // Confetti
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirectionality: BlastDirectionality.explosive,
+                shouldLoop: false,
+                colors: [
+                  AppColors.primary,
+                  AppColors.secondary,
+                  AppColors.accent,
+                  AppColors.starFilled,
+                  AppColors.primaryLight,
+                  AppColors.accentLight,
+                ],
+                numberOfParticles: 30,
+                gravity: 0.2,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -259,21 +298,27 @@ class _ResultsScreenState extends State<ResultsScreen>
               width: double.infinity,
               height: 56,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => TypingScreen(lesson: nextLesson),
-                    ),
-                  );
-                },
+                onPressed: () => _goNextLesson(),
                 icon: const Icon(
                   Icons.arrow_forward_rounded,
                   color: Colors.white,
                 ),
-                label: Text(
-                  'Next Lesson: ${nextLesson.emoji} ${nextLesson.title}',
-                  style: GoogleFonts.fredoka(fontSize: 18, color: Colors.white),
-                  overflow: TextOverflow.ellipsis,
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Next: ${nextLesson.emoji} ${nextLesson.title}',
+                        style: GoogleFonts.fredoka(
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _ResultShortcutBadge(label: 'Enter', light: true),
+                  ],
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -291,17 +336,18 @@ class _ResultsScreenState extends State<ResultsScreen>
           width: double.infinity,
           height: 56,
           child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (_) => TypingScreen(lesson: widget.lesson),
-                ),
-              );
-            },
+            onPressed: () => _retryLesson(),
             icon: const Icon(Icons.replay_rounded, color: Colors.white),
-            label: Text(
-              'Try Again',
-              style: GoogleFonts.fredoka(fontSize: 20, color: Colors.white),
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Try Again',
+                  style: GoogleFonts.fredoka(fontSize: 20, color: Colors.white),
+                ),
+                const SizedBox(width: 8),
+                _ResultShortcutBadge(label: 'R', light: true),
+              ],
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.secondary,
@@ -312,17 +358,23 @@ class _ResultsScreenState extends State<ResultsScreen>
           ),
         ),
         const SizedBox(height: 12),
-        // Back to lessons
+        // Back
         SizedBox(
           width: double.infinity,
           height: 56,
           child: OutlinedButton.icon(
             onPressed: () {
-              // Pop back to whatever screen launched the lesson (Home or LessonList)
               Navigator.of(context).pop();
             },
             icon: const Icon(Icons.home_rounded),
-            label: Text('Back', style: GoogleFonts.fredoka(fontSize: 20)),
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Back', style: GoogleFonts.fredoka(fontSize: 20)),
+                const SizedBox(width: 8),
+                _ResultShortcutBadge(label: 'Esc'),
+              ],
+            ),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,
               side: const BorderSide(color: AppColors.primary, width: 2),
@@ -340,6 +392,38 @@ class _ResultsScreenState extends State<ResultsScreen>
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
+  }
+}
+
+class _ResultShortcutBadge extends StatelessWidget {
+  final String label;
+  final bool light;
+  const _ResultShortcutBadge({required this.label, this.light = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: light
+            ? Colors.white.withValues(alpha: 0.25)
+            : AppColors.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: light
+              ? Colors.white.withValues(alpha: 0.4)
+              : AppColors.primary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.robotoMono(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: light ? Colors.white : AppColors.primary,
+        ),
+      ),
+    );
   }
 }
 
