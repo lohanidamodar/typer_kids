@@ -413,15 +413,18 @@ class _TypingTestScreenState extends State<TypingTestScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Icon(Icons.play_arrow_rounded, size: 28),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Start Test',
-                              style: GoogleFonts.fredoka(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w600,
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Start Test',
+                                style: GoogleFonts.fredoka(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             _keyBadge('Enter', Colors.white),
                           ],
                         ),

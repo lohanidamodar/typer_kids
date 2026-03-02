@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/sound_manager.dart';
 import '../../data/word_lists.dart';
 import '../../providers/progress_provider.dart';
 
@@ -52,6 +53,8 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
   final _setupFocusNode = FocusNode();
   final _gameFocusNode = FocusNode();
   final _overFocusNode = FocusNode();
+
+  final _sfx = SoundManager();
 
   // ── Difficulty Config ──
   int get _wordCount => switch (_difficulty) {
@@ -107,6 +110,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
     _totalSeconds = _gameDuration;
     _ghostProgress = 0;
     _phase = _Phase.playing;
+    _sfx.playGameStart();
     setState(() {});
 
     _gameTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -120,8 +124,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
     _ghostTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       if (!mounted || _phase != _Phase.playing) return;
       setState(() {
-        _ghostProgress = (_ghostProgress + _ghostSpeed / 10)
-            .clamp(0.0, 1.0);
+        _ghostProgress = (_ghostProgress + _ghostSpeed / 10).clamp(0.0, 1.0);
       });
     });
 
@@ -155,6 +158,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
     if (char == null || char.isEmpty) return;
     if (!RegExp(r'[a-zA-Z]').hasMatch(char)) return;
 
+    _sfx.playKeystroke();
     setState(() => _input += char.toLowerCase());
   }
 
@@ -167,6 +171,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
       _score += target.length * 10 + (_remainingSeconds * 2);
       _currentIndex++;
       _input = '';
+      _sfx.playPop();
       if (_currentIndex >= _words.length) {
         // Finished all words!
         _score += _remainingSeconds * 50; // Time bonus
@@ -176,6 +181,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
     } else {
       _errors++;
       _input = '';
+      _sfx.playIncorrect();
     }
     setState(() {});
   }
@@ -183,6 +189,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
   void _endGame() {
     _gameTimer?.cancel();
     _ghostTimer?.cancel();
+    _sfx.playGameOver();
     final progress = Provider.of<ProgressProvider>(context, listen: false);
     _highScore = progress.getHighScore('speed_chase');
     progress.recordScore('speed_chase', _score).then((isNew) {
@@ -220,8 +227,10 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
         _ghostTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
           if (!mounted || _phase != _Phase.playing) return;
           setState(() {
-            _ghostProgress = (_ghostProgress + _ghostSpeed / 10)
-                .clamp(0.0, 1.0);
+            _ghostProgress = (_ghostProgress + _ghostSpeed / 10).clamp(
+              0.0,
+              1.0,
+            );
           });
         });
         _gameFocusNode.requestFocus();
@@ -372,8 +381,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                                   selected: selected,
                                   compact: !isTall,
                                   accentColor: const Color(0xFFE53935),
-                                  onTap: () =>
-                                      setState(() => _difficulty = d),
+                                  onTap: () => setState(() => _difficulty = d),
                                 ),
                               ),
                             );
@@ -396,10 +404,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(
-                                  Icons.play_arrow_rounded,
-                                  size: 28,
-                                ),
+                                const Icon(Icons.play_arrow_rounded, size: 28),
                                 const SizedBox(width: 6),
                                 Flexible(
                                   child: Text(
@@ -434,8 +439,9 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
   Widget _buildGame() {
     final mins = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
     final secs = (_remainingSeconds % 60).toString().padLeft(2, '0');
-    final timerColor =
-        _remainingSeconds <= 10 ? AppColors.incorrect : AppColors.primary;
+    final timerColor = _remainingSeconds <= 10
+        ? AppColors.incorrect
+        : AppColors.primary;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -451,10 +457,16 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                 final screenW = constraints.maxWidth;
                 final isWide = screenW > 600;
                 final isLarge = screenW > 1000;
-                final wordFontSize =
-                    isLarge ? 28.0 : isWide ? 22.0 : 18.0;
-                final inputFontSize =
-                    isLarge ? 30.0 : isWide ? 24.0 : 20.0;
+                final wordFontSize = isLarge
+                    ? 28.0
+                    : isWide
+                    ? 22.0
+                    : 18.0;
+                final inputFontSize = isLarge
+                    ? 30.0
+                    : isWide
+                    ? 24.0
+                    : 20.0;
 
                 return Column(
                   children: [
@@ -473,8 +485,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color:
-                                Colors.black.withValues(alpha: 0.06),
+                            color: Colors.black.withValues(alpha: 0.06),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
@@ -482,10 +493,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                       ),
                       child: Row(
                         children: [
-                          Text(
-                            '⭐',
-                            style: const TextStyle(fontSize: 20),
-                          ),
+                          Text('⭐', style: const TextStyle(fontSize: 20)),
                           const SizedBox(width: 4),
                           Text(
                             '$_score',
@@ -526,8 +534,9 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE53935)
-                                  .withValues(alpha: 0.12),
+                              color: const Color(
+                                0xFFE53935,
+                              ).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -548,12 +557,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                     _buildRaceTrack(screenW),
                     const SizedBox(height: 16),
 
-                    // Word list area
-                    Expanded(
-                      child: _buildWordArea(wordFontSize),
-                    ),
-
-                    // Input area
+                    // Input area (top for visibility during touch typing)
                     _buildInputArea(inputFontSize),
                     const SizedBox(height: 4),
                     Text(
@@ -563,7 +567,10 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 12),
+
+                    // Word list area
+                    Expanded(child: _buildWordArea(wordFontSize)),
+                    const SizedBox(height: 4),
                   ],
                 );
               },
@@ -668,19 +675,13 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                     Positioned(
                       left: pos,
                       top: 0,
-                      child: Text(
-                        emoji,
-                        style: const TextStyle(fontSize: 22),
-                      ),
+                      child: Text(emoji, style: const TextStyle(fontSize: 22)),
                     ),
                     // Finish flag
                     Positioned(
                       right: 0,
                       top: 0,
-                      child: Text(
-                        '🏁',
-                        style: const TextStyle(fontSize: 18),
-                      ),
+                      child: Text('🏁', style: const TextStyle(fontSize: 18)),
                     ),
                   ],
                 ),
@@ -697,10 +698,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
       return Center(
         child: Text(
           '🏁 All words completed!',
-          style: GoogleFonts.fredoka(
-            fontSize: 24,
-            color: AppColors.correct,
-          ),
+          style: GoogleFonts.fredoka(fontSize: 24, color: AppColors.correct),
         ),
       );
     }
@@ -739,9 +737,11 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                 runSpacing: 8,
                 alignment: WrapAlignment.center,
                 children: [
-                  for (var i = _currentIndex + 1;
-                      i < min(_currentIndex + 6, _words.length);
-                      i++)
+                  for (
+                    var i = _currentIndex + 1;
+                    i < min(_currentIndex + 6, _words.length);
+                    i++
+                  )
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -809,8 +809,9 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
 
   Widget _buildInputArea(double fontSize) {
     final hasInput = _input.isNotEmpty;
-    final currentWord =
-        _currentIndex < _words.length ? _words[_currentIndex] : '';
+    final currentWord = _currentIndex < _words.length
+        ? _words[_currentIndex]
+        : '';
     final matches = hasInput && currentWord.startsWith(_input);
     final noMatch = hasInput && !matches;
 
@@ -945,24 +946,22 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                AppColors.starFilled
-                                    .withValues(alpha: 0.15),
-                                const Color(0xFFE53935)
-                                    .withValues(alpha: 0.15),
+                                AppColors.starFilled.withValues(alpha: 0.15),
+                                const Color(0xFFE53935).withValues(alpha: 0.15),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: AppColors.starFilled
-                                  .withValues(alpha: 0.4),
+                              color: AppColors.starFilled.withValues(
+                                alpha: 0.4,
+                              ),
                             ),
                           ),
                           child: Column(
                             children: [
                               if (_isNewHighScore)
                                 Padding(
-                                  padding:
-                                      const EdgeInsets.only(bottom: 4),
+                                  padding: const EdgeInsets.only(bottom: 4),
                                   child: Text(
                                     '⭐ New High Score! ⭐',
                                     style: GoogleFonts.fredoka(
@@ -1009,15 +1008,10 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                             _OverStat(
                               emoji: '📝',
                               label: 'Words Typed',
-                              value:
-                                  '$_currentIndex/${_words.length}',
+                              value: '$_currentIndex/${_words.length}',
                             ),
                             const SizedBox(width: 12),
-                            _OverStat(
-                              emoji: '⚡',
-                              label: 'WPM',
-                              value: '$wpm',
-                            ),
+                            _OverStat(emoji: '⚡', label: 'WPM', value: '$wpm'),
                           ],
                         ),
                         SizedBox(height: isTall ? 12 : 8),
@@ -1050,18 +1044,13 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                               ),
                             ),
                             child: Row(
-                              mainAxisAlignment:
-                                  MainAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(
-                                  Icons.replay_rounded,
-                                  size: 24,
-                                ),
+                                const Icon(Icons.replay_rounded, size: 24),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Race Again',
-                                  style:
-                                      GoogleFonts.fredoka(fontSize: 20),
+                                  style: GoogleFonts.fredoka(fontSize: 20),
                                 ),
                                 const SizedBox(width: 8),
                                 _keyBadge('Enter', Colors.white),
@@ -1072,10 +1061,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                         const SizedBox(height: 12),
                         TextButton.icon(
                           onPressed: () => context.pop(),
-                          icon: const Icon(
-                            Icons.arrow_back_rounded,
-                            size: 18,
-                          ),
+                          icon: const Icon(Icons.arrow_back_rounded, size: 18),
                           label: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -1158,9 +1144,7 @@ class _DifficultyCard extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: EdgeInsets.symmetric(vertical: vPad, horizontal: 8),
         decoration: BoxDecoration(
-          color: selected
-              ? accentColor.withValues(alpha: 0.12)
-              : Colors.white,
+          color: selected ? accentColor.withValues(alpha: 0.12) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected ? accentColor : Colors.grey.shade300,
@@ -1178,10 +1162,7 @@ class _DifficultyCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text(
-              difficulty.emoji,
-              style: TextStyle(fontSize: emojiSize),
-            ),
+            Text(difficulty.emoji, style: TextStyle(fontSize: emojiSize)),
             SizedBox(height: compact ? 2 : 4),
             Text(
               difficulty.label,
@@ -1204,16 +1185,11 @@ class _DifficultyCard extends StatelessWidget {
             ],
             SizedBox(height: compact ? 3 : 6),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 5,
-                vertical: 1,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: accentColor.withValues(alpha: 0.2),
-                ),
+                border: Border.all(color: accentColor.withValues(alpha: 0.2)),
               ),
               child: Text(
                 '$index',
@@ -1333,9 +1309,7 @@ class _QuitDialogState extends State<_QuitDialog> {
       autofocus: true,
       onKeyEvent: _handleKey,
       child: AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Quit Race?',
           style: GoogleFonts.fredoka(

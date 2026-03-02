@@ -27,6 +27,7 @@ class _TypingScreenState extends State<TypingScreen> {
   final FocusNode _focusNode = FocusNode();
   final FocusNode _introFocusNode = FocusNode();
   bool _showIntro = true;
+  bool _isTransitioning = false;
 
   @override
   void initState() {
@@ -74,6 +75,7 @@ class _TypingScreenState extends State<TypingScreen> {
     if (event is! KeyDownEvent) return;
     if (_typingProvider.isFinished) return;
     if (_typingProvider.isPaused) return;
+    if (_isTransitioning) return; // Ignore input during exercise transition
 
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       _showQuitDialog();
@@ -86,9 +88,11 @@ class _TypingScreenState extends State<TypingScreen> {
 
       // If exercise complete but not last, auto advance after a brief moment
       if (_typingProvider.isExerciseComplete && !_typingProvider.isFinished) {
+        _isTransitioning = true;
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
             _typingProvider.nextExercise();
+            _isTransitioning = false;
           }
         });
       }

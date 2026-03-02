@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/sound_manager.dart';
 import '../../data/word_lists.dart';
 import '../../providers/progress_provider.dart';
 
@@ -16,6 +18,8 @@ import '../../providers/progress_provider.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum _Phase { setup, playing, gameOver }
+
+enum _FlashType { correct, wrong }
 
 class _FallingWord {
   final String word;
@@ -29,6 +33,23 @@ class _FallingWord {
     required this.x,
     required this.y,
     required this.speed,
+    required this.colorIndex,
+  });
+}
+
+/// Brief ghost left behind when a word is destroyed or missed.
+class _Ghost {
+  final String word;
+  final double x;
+  final double y;
+  final bool success; // true = correct, false = wrong/miss
+  final int colorIndex;
+
+  _Ghost({
+    required this.word,
+    required this.x,
+    required this.y,
+    required this.success,
     required this.colorIndex,
   });
 }
@@ -77,6 +98,13 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   bool _isNewHighScore = false;
   int _highScore = 0;
 
+  // Feedback flash
+  _FlashType? _flash;
+  Timer? _flashTimer;
+
+  // Ghost feedback bubbles (shown at word position on pop/miss)
+  final List<_Ghost> _ghosts = [];
+
   // ── Animation ──
   late final Ticker _ticker;
   Duration _lastTick = Duration.zero;
@@ -87,6 +115,8 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   final _setupFocusNode = FocusNode();
   final _gameFocusNode = FocusNode();
   final _overFocusNode = FocusNode();
+
+  final _sfx = SoundManager();
 
   // ── Difficulty config ──
   double get _spawnInterval => switch (_difficulty) {
@@ -129,6 +159,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   @override
   void dispose() {
     _ticker.dispose();
+    _flashTimer?.cancel();
     _setupFocusNode.dispose();
     _gameFocusNode.dispose();
     _overFocusNode.dispose();
@@ -138,6 +169,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   // ── Game logic ──
   void _startGame() {
     _words.clear();
+    _ghosts.clear();
     _input = '';
     _target = null;
     _score = 0;
@@ -153,6 +185,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     _gameStart = DateTime.now();
     _phase = _Phase.playing;
     _ticker.start();
+    _sfx.playGameStart();
     setState(() {});
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _gameFocusNode.requestFocus();
@@ -180,10 +213,12 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     // Missed words
     final missed = _words.where((w) => w.y >= 1.0).toList();
     for (final w in missed) {
+      _addGhost(w.word, w.x, w.y.clamp(0.0, 0.92), false, w.colorIndex);
       _words.remove(w);
       _wordsMissed++;
       _streak = 0;
       _lives--;
+      _sfx.playMiss();
       if (_target == w) {
         _target = null;
         _input = '';
@@ -216,6 +251,15 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     );
   }
 
+  void _showFlash(_FlashType type) {
+    _flashTimer?.cancel();
+    _flash = type;
+    setState(() {});
+    _flashTimer = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) setState(() => _flash = null);
+    });
+  }
+
   void _handleGameKey(KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return;
 
@@ -233,6 +277,19 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
       return;
     }
 
+    // Space/Enter clears input when there's no matching target
+    if (event.logicalKey == LogicalKeyboardKey.space ||
+        event.logicalKey == LogicalKeyboardKey.enter) {
+      if (_input.isNotEmpty && _target == null) {
+        _showFlash(_FlashType.wrong);
+        _sfx.playIncorrect();
+        _input = '';
+        _streak = 0;
+        setState(() {});
+      }
+      return;
+    }
+
     final char = event.character;
     if (char == null || char.isEmpty) return;
     if (!RegExp(r'[a-zA-Z]').hasMatch(char)) return;
@@ -243,6 +300,11 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     // Exact match → destroy
     if (_target != null && _input == _target!.word) {
       _destroyWord(_target!);
+      _showFlash(_FlashType.correct);
+      _sfx.playPop();
+      if (_streak >= 3) _sfx.playStreak();
+    } else {
+      _sfx.playKeystroke();
     }
 
     setState(() {});
@@ -271,6 +333,8 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   }
 
   void _destroyWord(_FallingWord word) {
+    // Add success ghost at word position
+    _addGhost(word.word, word.x, word.y, true, word.colorIndex);
     _words.remove(word);
     _score += word.word.length * 10;
     _wordsDestroyed++;
@@ -280,8 +344,32 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     _target = null;
   }
 
+  void _addGhost(
+    String word,
+    double x,
+    double y,
+    bool success,
+    int colorIndex,
+  ) {
+    final ghost = _Ghost(
+      word: word,
+      x: x,
+      y: y,
+      success: success,
+      colorIndex: colorIndex,
+    );
+    _ghosts.add(ghost);
+    Timer(const Duration(milliseconds: 600), () {
+      if (mounted) {
+        _ghosts.remove(ghost);
+        setState(() {});
+      }
+    });
+  }
+
   void _endGame() {
     _ticker.stop();
+    _sfx.playGameOver();
     _gameDuration = DateTime.now().difference(_gameStart ?? DateTime.now());
     // Record high score
     final progress = Provider.of<ProgressProvider>(context, listen: false);
@@ -521,11 +609,11 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
               children: [
                 // Top bar
                 _buildTopBar(),
+                // Input area (top for visibility during touch typing)
+                _buildInputArea(),
                 // Game area
                 Expanded(child: _buildGameArea()),
-                // Input area
-                _buildInputArea(),
-                const SizedBox(height: 12),
+                const SizedBox(height: 4),
               ],
             ),
           ),
@@ -645,6 +733,8 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
             ),
             // Falling words
             for (final w in _words) _buildWordBubble(w, areaW, areaH),
+            // Ghost feedback indicators
+            for (final g in _ghosts) _buildGhostIndicator(g, areaW, areaH),
             // Empty state hint
             if (_words.isEmpty)
               Center(
@@ -701,13 +791,39 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
           color: isTarget ? color : color.withValues(alpha: 0.85),
           borderRadius: BorderRadius.circular(14),
           border: isTarget
-              ? Border.all(color: AppColors.starFilled, width: 2.5)
+              ? Border.all(
+                  color: _input.isEmpty
+                      ? AppColors.starFilled
+                      : word.word.startsWith(_input)
+                      ? const Color(0xFF00E676)
+                      : const Color(0xFFFF5252),
+                  width: 2.5,
+                )
+              : (_input.isNotEmpty && _target == null)
+              ? Border.all(
+                  color: const Color(0xFFFF5252).withValues(alpha: 0.7),
+                  width: 2,
+                )
               : null,
           boxShadow: isTarget
               ? [
                   BoxShadow(
-                    color: AppColors.starFilled.withValues(alpha: 0.4),
-                    blurRadius: 12,
+                    color:
+                        (_input.isEmpty
+                                ? AppColors.starFilled
+                                : word.word.startsWith(_input)
+                                ? const Color(0xFF00E676)
+                                : const Color(0xFFFF5252))
+                            .withValues(alpha: 0.5),
+                    blurRadius: 14,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : (_input.isNotEmpty && _target == null)
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFFF5252).withValues(alpha: 0.3),
+                    blurRadius: 10,
                     spreadRadius: 1,
                   ),
                 ]
@@ -735,6 +851,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
 
   Widget _buildPartialMatch(String word, String typed, double fontSize) {
     final matchLen = typed.length.clamp(0, word.length);
+    final matches = word.startsWith(typed);
     return Text.rich(
       TextSpan(
         children: [
@@ -743,7 +860,15 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
             style: GoogleFonts.fredoka(
               fontSize: fontSize,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFFB9F6CA), // light green
+              color: matches
+                  ? const Color(0xFF00E676)
+                  : const Color(0xFFFF5252),
+              shadows: [
+                Shadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 2,
+                ),
+              ],
             ),
           ),
           TextSpan(
@@ -759,52 +884,152 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     );
   }
 
+  Widget _buildGhostIndicator(_Ghost ghost, double areaW, double areaH) {
+    final fontSize = _wordFontSize;
+    final estWidth = ghost.word.length * (fontSize * 0.7) + 48;
+    final maxLeft = (areaW - estWidth).clamp(0.0, double.infinity);
+    final left = (ghost.x * areaW).clamp(0.0, maxLeft);
+    final top = ghost.y * areaH;
+
+    final color = ghost.success
+        ? const Color(0xFF00E676)
+        : const Color(0xFFFF5252);
+    final icon = ghost.success ? Icons.check_circle : Icons.cancel;
+
+    return Positioned(
+      left: left,
+      top: top,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 1.0, end: 0.0),
+        duration: const Duration(milliseconds: 600),
+        builder: (context, opacity, child) {
+          return Opacity(
+            opacity: opacity,
+            child: Transform.translate(
+              offset: Offset(0, -30 * (1 - opacity)),
+              child: child,
+            ),
+          );
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: fontSize * 0.5,
+            vertical: fontSize * 0.3,
+          ),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.25),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color, width: 2),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: fontSize * 0.9),
+              const SizedBox(width: 4),
+              Text(
+                ghost.word,
+                style: GoogleFonts.fredoka(
+                  fontSize: fontSize * 0.85,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildInputArea() {
     final hasMatch = _target != null;
     final hasInput = _input.isNotEmpty;
     final noMatch = hasInput && !hasMatch;
     final fontSize = _inputFontSize;
 
-    return Container(
+    // Flash feedback colors
+    Color bgColor = Colors.white;
+    Color borderColor = noMatch
+        ? AppColors.incorrect.withValues(alpha: 0.6)
+        : hasMatch
+        ? AppColors.primary.withValues(alpha: 0.6)
+        : Colors.grey.shade300;
+
+    if (_flash == _FlashType.correct) {
+      bgColor = const Color(0xFFE8F5E9); // light green bg
+      borderColor = AppColors.correct;
+    } else if (_flash == _FlashType.wrong) {
+      bgColor = const Color(0xFFFFEBEE); // light red bg
+      borderColor = AppColors.incorrect;
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
       margin: const EdgeInsets.symmetric(horizontal: 32),
       padding: EdgeInsets.symmetric(
         horizontal: fontSize * 0.9,
         vertical: fontSize * 0.6,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bgColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: noMatch
-              ? AppColors.incorrect.withValues(alpha: 0.6)
-              : hasMatch
-              ? AppColors.primary.withValues(alpha: 0.6)
-              : Colors.grey.shade300,
-          width: 2,
-        ),
+        border: Border.all(color: borderColor, width: _flash != null ? 3 : 2),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
+          if (_flash == _FlashType.correct)
+            BoxShadow(
+              color: AppColors.correct.withValues(alpha: 0.3),
+              blurRadius: 12,
+              spreadRadius: 2,
+            )
+          else if (_flash == _FlashType.wrong)
+            BoxShadow(
+              color: AppColors.incorrect.withValues(alpha: 0.3),
+              blurRadius: 12,
+              spreadRadius: 2,
+            )
+          else
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
         ],
       ),
       child: Row(
         children: [
           Icon(
-            Icons.keyboard_rounded,
-            color: hasInput ? AppColors.primary : Colors.grey.shade400,
+            _flash == _FlashType.correct
+                ? Icons.check_circle_rounded
+                : _flash == _FlashType.wrong
+                ? Icons.cancel_rounded
+                : Icons.keyboard_rounded,
+            color: _flash == _FlashType.correct
+                ? AppColors.correct
+                : _flash == _FlashType.wrong
+                ? AppColors.incorrect
+                : hasInput
+                ? AppColors.primary
+                : Colors.grey.shade400,
             size: fontSize,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              hasInput ? _input : 'Start typing...',
+              _flash == _FlashType.correct
+                  ? '✓ Nice!'
+                  : _flash == _FlashType.wrong
+                  ? '✗ No match'
+                  : hasInput
+                  ? _input
+                  : 'Start typing...',
               style: GoogleFonts.fredoka(
                 fontSize: fontSize,
                 fontWeight: FontWeight.w500,
-                color: noMatch
+                color: _flash == _FlashType.correct
+                    ? AppColors.correct
+                    : _flash == _FlashType.wrong
+                    ? AppColors.incorrect
+                    : noMatch
                     ? AppColors.incorrect
                     : hasInput
                     ? AppColors.textPrimary
@@ -812,7 +1037,17 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
               ),
             ),
           ),
-          if (hasInput)
+          if (hasInput && _flash == null) ...[
+            if (noMatch)
+              Text(
+                'Space',
+                style: GoogleFonts.robotoMono(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.incorrect.withValues(alpha: 0.6),
+                ),
+              ),
+            const SizedBox(width: 6),
             Text(
               '⌫',
               style: TextStyle(
@@ -820,6 +1055,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                 color: Colors.grey.shade400,
               ),
             ),
+          ],
         ],
       ),
     );

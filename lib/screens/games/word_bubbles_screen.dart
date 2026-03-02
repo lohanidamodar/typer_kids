@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/sound_manager.dart';
 import '../../data/word_lists.dart';
 import '../../providers/progress_provider.dart';
 
@@ -16,6 +17,8 @@ import '../../providers/progress_provider.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum _Phase { setup, playing, gameOver }
+
+enum _FlashType { correct, wrong }
 
 class _Bubble {
   final String word;
@@ -34,6 +37,15 @@ class _Bubble {
   }) : maxLife = life;
 
   double get opacity => (life / maxLife).clamp(0.3, 1.0);
+}
+
+class _Ghost {
+  final String word;
+  final double x;
+  final double y;
+  final bool success;
+  final int colorIndex;
+  _Ghost(this.word, this.x, this.y, this.success, this.colorIndex);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -74,6 +86,13 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
   bool _isNewHighScore = false;
   int _highScore = 0;
 
+  // Feedback flash
+  _FlashType? _flash;
+  Timer? _flashTimer;
+
+  // Ghost feedback indicators
+  final List<_Ghost> _ghosts = [];
+
   // Timer
   Timer? _gameTimer;
   Timer? _spawnTimer;
@@ -85,6 +104,8 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
   final _setupFocusNode = FocusNode();
   final _gameFocusNode = FocusNode();
   final _overFocusNode = FocusNode();
+
+  final _sfx = SoundManager();
 
   // ── Difficulty config ──
   int get _gameDuration => switch (_difficulty) {
@@ -116,6 +137,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     _gameTimer?.cancel();
     _spawnTimer?.cancel();
     _tickTimer?.cancel();
+    _flashTimer?.cancel();
     _setupFocusNode.dispose();
     _gameFocusNode.dispose();
     _overFocusNode.dispose();
@@ -126,6 +148,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
 
   void _startGame() {
     _bubbles.clear();
+    _ghosts.clear();
     _input = '';
     _target = null;
     _score = 0;
@@ -137,6 +160,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     _highScore = 0;
     _remainingSeconds = _gameDuration;
     _phase = _Phase.playing;
+    _sfx.playGameStart();
     setState(() {});
 
     // Countdown timer
@@ -202,9 +226,11 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
       if (b.life <= 0) expired.add(b);
     }
     for (final b in expired) {
+      _addGhost(b.word, b.x, b.y, false, b.colorIndex);
       _bubbles.remove(b);
       _missed++;
       _streak = 0;
+      _sfx.playMiss();
       if (_target == b) {
         _target = null;
         _input = '';
@@ -213,6 +239,15 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     if (expired.isNotEmpty || _bubbles.isNotEmpty) {
       setState(() {});
     }
+  }
+
+  void _showFlash(_FlashType type) {
+    _flashTimer?.cancel();
+    _flash = type;
+    setState(() {});
+    _flashTimer = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) setState(() => _flash = null);
+    });
   }
 
   void _handleGameKey(KeyEvent event) {
@@ -232,6 +267,19 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
       return;
     }
 
+    // Space/Enter clears input when there's no matching target
+    if (event.logicalKey == LogicalKeyboardKey.space ||
+        event.logicalKey == LogicalKeyboardKey.enter) {
+      if (_input.isNotEmpty && _target == null) {
+        _showFlash(_FlashType.wrong);
+        _sfx.playIncorrect();
+        _input = '';
+        _streak = 0;
+        setState(() {});
+      }
+      return;
+    }
+
     final char = event.character;
     if (char == null || char.isEmpty) return;
     if (!RegExp(r'[a-zA-Z]').hasMatch(char)) return;
@@ -242,6 +290,11 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     // Exact match → pop
     if (_target != null && _input == _target!.word) {
       _popBubble(_target!);
+      _showFlash(_FlashType.correct);
+      _sfx.playPop();
+      if (_streak >= 3) _sfx.playStreak();
+    } else {
+      _sfx.playKeystroke();
     }
 
     setState(() {});
@@ -270,6 +323,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
   }
 
   void _popBubble(_Bubble bubble) {
+    _addGhost(bubble.word, bubble.x, bubble.y, true, bubble.colorIndex);
     _bubbles.remove(bubble);
     _score += bubble.word.length * 10 + (bubble.life * 5).round();
     _popped++;
@@ -279,10 +333,28 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     _target = null;
   }
 
+  void _addGhost(
+    String word,
+    double x,
+    double y,
+    bool success,
+    int colorIndex,
+  ) {
+    final ghost = _Ghost(word, x, y, success, colorIndex);
+    _ghosts.add(ghost);
+    Timer(const Duration(milliseconds: 600), () {
+      if (mounted) {
+        _ghosts.remove(ghost);
+        setState(() {});
+      }
+    });
+  }
+
   void _endGame() {
     _gameTimer?.cancel();
     _spawnTimer?.cancel();
     _tickTimer?.cancel();
+    _sfx.playGameOver();
     final progress = Provider.of<ProgressProvider>(context, listen: false);
     _highScore = progress.getHighScore('word_bubbles');
     progress.recordScore('word_bubbles', _score).then((isNew) {
@@ -630,12 +702,12 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
                   ),
                 ),
 
+                // Input area (top for visibility during touch typing)
+                _buildInputArea(),
+
                 // Bubble area
                 Expanded(child: _buildBubbleArea()),
-
-                // Input area
-                _buildInputArea(),
-                const SizedBox(height: 12),
+                const SizedBox(height: 4),
               ],
             ),
           ),
@@ -659,7 +731,10 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
           clipBehavior: Clip.hardEdge,
           children: [
             for (final b in _bubbles) _buildBubble(b, areaW, areaH, fontSize),
-            if (_bubbles.isEmpty)
+            // Ghost feedback indicators
+            for (final g in _ghosts)
+              _buildGhostIndicator(g, areaW, areaH, fontSize),
+            if (_bubbles.isEmpty && _ghosts.isEmpty)
               Center(
                 child: Text(
                   'Pop the bubbles! 🫧',
@@ -704,7 +779,19 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
             color: isTarget ? color : color.withValues(alpha: 0.8),
             borderRadius: BorderRadius.circular(size / 2),
             border: isTarget
-                ? Border.all(color: AppColors.starFilled, width: 3)
+                ? Border.all(
+                    color: _input.isEmpty
+                        ? AppColors.starFilled
+                        : bubble.word.startsWith(_input)
+                        ? const Color(0xFF00E676)
+                        : const Color(0xFFFF5252),
+                    width: 3,
+                  )
+                : (_input.isNotEmpty && _target == null)
+                ? Border.all(
+                    color: const Color(0xFFFF5252).withValues(alpha: 0.7),
+                    width: 2.5,
+                  )
                 : Border.all(
                     color: Colors.white.withValues(alpha: 0.5),
                     width: 2,
@@ -712,9 +799,23 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
             boxShadow: isTarget
                 ? [
                     BoxShadow(
-                      color: AppColors.starFilled.withValues(alpha: 0.4),
-                      blurRadius: 16,
+                      color:
+                          (_input.isEmpty
+                                  ? AppColors.starFilled
+                                  : bubble.word.startsWith(_input)
+                                  ? const Color(0xFF00E676)
+                                  : const Color(0xFFFF5252))
+                              .withValues(alpha: 0.5),
+                      blurRadius: 18,
                       spreadRadius: 2,
+                    ),
+                  ]
+                : (_input.isNotEmpty && _target == null)
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFFFF5252).withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      spreadRadius: 1,
                     ),
                   ]
                 : [
@@ -742,6 +843,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
 
   Widget _buildPartialMatch(String word, String typed, double fontSize) {
     final matchLen = typed.length.clamp(0, word.length);
+    final matches = word.startsWith(typed);
     return Text.rich(
       TextSpan(
         children: [
@@ -750,7 +852,15 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
             style: GoogleFonts.fredoka(
               fontSize: fontSize,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFFB9F6CA),
+              color: matches
+                  ? const Color(0xFF00E676)
+                  : const Color(0xFFFF5252),
+              shadows: [
+                Shadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 2,
+                ),
+              ],
             ),
           ),
           TextSpan(
@@ -766,6 +876,66 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     );
   }
 
+  Widget _buildGhostIndicator(
+    _Ghost ghost,
+    double areaW,
+    double areaH,
+    double fontSize,
+  ) {
+    final size = ghost.word.length * (fontSize * 0.7) + 52;
+    final left = (ghost.x * (areaW - size)).clamp(0.0, areaW - size);
+    final top = (ghost.y * (areaH - size)).clamp(0.0, areaH - size);
+
+    final color = ghost.success
+        ? const Color(0xFF00E676)
+        : const Color(0xFFFF5252);
+    final icon = ghost.success ? Icons.check_circle : Icons.cancel;
+
+    return Positioned(
+      left: left,
+      top: top,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 1.0, end: 0.0),
+        duration: const Duration(milliseconds: 600),
+        builder: (context, opacity, child) {
+          return Opacity(
+            opacity: opacity,
+            child: Transform.translate(
+              offset: Offset(0, -30 * (1 - opacity)),
+              child: child,
+            ),
+          );
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: fontSize * 0.6,
+            vertical: fontSize * 0.4,
+          ),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.25),
+            borderRadius: BorderRadius.circular(size / 2),
+            border: Border.all(color: color, width: 2),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: fontSize * 0.9),
+              const SizedBox(width: 4),
+              Text(
+                ghost.word,
+                style: GoogleFonts.fredoka(
+                  fontSize: fontSize * 0.85,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildInputArea() {
     final hasMatch = _target != null;
     final hasInput = _input.isNotEmpty;
@@ -777,46 +947,89 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
         ? 24.0
         : 20.0;
 
-    return Container(
+    // Flash feedback colors
+    Color bgColor = Colors.white;
+    Color borderColor = noMatch
+        ? AppColors.incorrect.withValues(alpha: 0.6)
+        : hasMatch
+        ? const Color(0xFF26C6DA).withValues(alpha: 0.6)
+        : Colors.grey.shade300;
+
+    if (_flash == _FlashType.correct) {
+      bgColor = const Color(0xFFE8F5E9);
+      borderColor = AppColors.correct;
+    } else if (_flash == _FlashType.wrong) {
+      bgColor = const Color(0xFFFFEBEE);
+      borderColor = AppColors.incorrect;
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
       margin: const EdgeInsets.symmetric(horizontal: 32),
       padding: EdgeInsets.symmetric(
         horizontal: fontSize * 0.9,
         vertical: fontSize * 0.6,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: bgColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: noMatch
-              ? AppColors.incorrect.withValues(alpha: 0.6)
-              : hasMatch
-              ? const Color(0xFF26C6DA).withValues(alpha: 0.6)
-              : Colors.grey.shade300,
-          width: 2,
-        ),
+        border: Border.all(color: borderColor, width: _flash != null ? 3 : 2),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
+          if (_flash == _FlashType.correct)
+            BoxShadow(
+              color: AppColors.correct.withValues(alpha: 0.3),
+              blurRadius: 12,
+              spreadRadius: 2,
+            )
+          else if (_flash == _FlashType.wrong)
+            BoxShadow(
+              color: AppColors.incorrect.withValues(alpha: 0.3),
+              blurRadius: 12,
+              spreadRadius: 2,
+            )
+          else
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
         ],
       ),
       child: Row(
         children: [
           Icon(
-            Icons.keyboard_rounded,
-            color: hasInput ? const Color(0xFF26C6DA) : Colors.grey.shade400,
+            _flash == _FlashType.correct
+                ? Icons.check_circle_rounded
+                : _flash == _FlashType.wrong
+                ? Icons.cancel_rounded
+                : Icons.keyboard_rounded,
+            color: _flash == _FlashType.correct
+                ? AppColors.correct
+                : _flash == _FlashType.wrong
+                ? AppColors.incorrect
+                : hasInput
+                ? const Color(0xFF26C6DA)
+                : Colors.grey.shade400,
             size: fontSize,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              hasInput ? _input : 'Type a word...',
+              _flash == _FlashType.correct
+                  ? '✓ Popped!'
+                  : _flash == _FlashType.wrong
+                  ? '✗ No match'
+                  : hasInput
+                  ? _input
+                  : 'Type a word...',
               style: GoogleFonts.fredoka(
                 fontSize: fontSize,
                 fontWeight: FontWeight.w500,
-                color: noMatch
+                color: _flash == _FlashType.correct
+                    ? AppColors.correct
+                    : _flash == _FlashType.wrong
+                    ? AppColors.incorrect
+                    : noMatch
                     ? AppColors.incorrect
                     : hasInput
                     ? AppColors.textPrimary
@@ -824,7 +1037,17 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
               ),
             ),
           ),
-          if (hasInput)
+          if (hasInput && _flash == null) ...[
+            if (noMatch)
+              Text(
+                'Space',
+                style: GoogleFonts.robotoMono(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.incorrect.withValues(alpha: 0.6),
+                ),
+              ),
+            const SizedBox(width: 6),
             Text(
               '⌫',
               style: TextStyle(
@@ -832,6 +1055,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
                 color: Colors.grey.shade400,
               ),
             ),
+          ],
         ],
       ),
     );
