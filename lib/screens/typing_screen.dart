@@ -75,6 +75,11 @@ class _TypingScreenState extends State<TypingScreen> {
     if (_typingProvider.isFinished) return;
     if (_typingProvider.isPaused) return;
 
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      _showQuitDialog();
+      return;
+    }
+
     final key = event.character;
     if (key != null && key.isNotEmpty) {
       _typingProvider.onKeyPressed(key);
@@ -527,40 +532,20 @@ class _TypingScreenState extends State<TypingScreen> {
   void _showQuitDialog() {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Leave Lesson?',
-          style: GoogleFonts.fredoka(
-            fontSize: 24,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        content: Text(
-          'Your progress on this exercise will not be saved.',
-          style: GoogleFonts.nunito(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(
-              'Stay',
-              style: GoogleFonts.fredoka(color: AppColors.primary),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop(); // Close dialog
-              context.pop(); // Pop typing screen via go_router
-            },
-            child: Text(
-              'Leave',
-              style: GoogleFonts.fredoka(color: AppColors.incorrect),
-            ),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (dialogContext) => _QuitConfirmDialog(
+        onStay: () => Navigator.of(dialogContext).pop(),
+        onLeave: () {
+          Navigator.of(dialogContext).pop();
+          context.pop();
+        },
       ),
-    );
+    ).then((_) {
+      // Restore focus to typing area after dialog closes
+      if (mounted && !_showIntro) {
+        _focusNode.requestFocus();
+      }
+    });
   }
 }
 
@@ -599,6 +584,110 @@ class _StatItem extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Quit confirmation dialog with keyboard shortcuts:
+/// Esc / S = Stay, Enter / L = Leave
+class _QuitConfirmDialog extends StatefulWidget {
+  final VoidCallback onStay;
+  final VoidCallback onLeave;
+
+  const _QuitConfirmDialog({required this.onStay, required this.onLeave});
+
+  @override
+  State<_QuitConfirmDialog> createState() => _QuitConfirmDialogState();
+}
+
+class _QuitConfirmDialogState extends State<_QuitConfirmDialog> {
+  final FocusNode _dialogFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _dialogFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleDialogKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.keyS) {
+      widget.onStay();
+    } else if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.keyL) {
+      widget.onLeave();
+    }
+  }
+
+  Widget _shortcutBadge(String label, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(left: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.robotoMono(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyboardListener(
+      focusNode: _dialogFocusNode,
+      autofocus: true,
+      onKeyEvent: _handleDialogKey,
+      child: AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Leave Lesson?',
+          style: GoogleFonts.fredoka(
+            fontSize: 24,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: Text(
+          'Your progress on this exercise will not be saved.',
+          style: GoogleFonts.nunito(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: widget.onStay,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Stay',
+                  style: GoogleFonts.fredoka(color: AppColors.primary),
+                ),
+                _shortcutBadge('Esc', AppColors.primary),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: widget.onLeave,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Leave',
+                  style: GoogleFonts.fredoka(color: AppColors.incorrect),
+                ),
+                _shortcutBadge('L', AppColors.incorrect),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
