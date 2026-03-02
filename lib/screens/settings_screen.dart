@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme/app_colors.dart';
+import '../providers/profile_provider.dart';
 import '../providers/progress_provider.dart';
 
 /// Simple settings screen for resetting progress and toggling options
@@ -34,6 +35,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final progress = context.watch<ProgressProvider>();
+    final profileProv = context.watch<ProfileProvider>();
+    final activeProfile = profileProv.activeProfile;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -44,6 +47,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            // Active profile
+            if (activeProfile != null) ...[
+              _buildSectionHeader('Profile'),
+              const SizedBox(height: 12),
+              _buildInfoCard(
+                context,
+                children: [
+                  _buildInfoRow('Name', activeProfile.name),
+                  _buildInfoRow('Avatar', activeProfile.emoji),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push('/profiles'),
+                  icon: const Icon(Icons.people_rounded),
+                  label: Text(
+                    'Switch Profile',
+                    style: GoogleFonts.fredoka(fontSize: 16),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    padding: const EdgeInsets.all(16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
             // Stats overview
             _buildSectionHeader('Your Progress'),
             const SizedBox(height: 12),

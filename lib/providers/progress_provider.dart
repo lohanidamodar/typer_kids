@@ -6,14 +6,21 @@ import '../models/lesson.dart';
 import '../models/lesson_progress.dart';
 import '../models/typing_stats.dart';
 
-/// Manages overall progress across all lessons
+/// Manages overall progress across all lessons, scoped per profile.
+///
+/// All SharedPreferences keys are prefixed with `profile_{profileId}_` so that
+/// each profile's data is stored separately.
 class ProgressProvider extends ChangeNotifier {
   final Map<String, LessonProgress> _progressMap = {};
   SharedPreferences? _prefs;
   bool _isLoaded = false;
   String? _lastLessonId;
+  String _profileId = '';
 
   bool get isLoaded => _isLoaded;
+
+  /// Key prefix for the current profile
+  String get _prefix => 'profile_${_profileId}_';
 
   /// The lesson the user should practice next (recommended flow)
   Lesson get recommendedLesson {
@@ -49,21 +56,35 @@ class ProgressProvider extends ChangeNotifier {
   /// Save which lesson the user last practiced
   Future<void> setLastLesson(String lessonId) async {
     _lastLessonId = lessonId;
-    await _prefs?.setString('last_lesson_id', lessonId);
+    await _prefs?.setString('${_prefix}last_lesson_id', lessonId);
   }
 
-  /// Initialize and load saved progress
-  Future<void> init() async {
+  /// Initialize and load saved progress for the given profile
+  Future<void> init({String profileId = ''}) async {
     _prefs = await SharedPreferences.getInstance();
+    _profileId = profileId;
+    _progressMap.clear();
+    _lastLessonId = null;
     _loadProgress();
-    _lastLessonId = _prefs?.getString('last_lesson_id');
+    _lastLessonId = _prefs?.getString('${_prefix}last_lesson_id');
     _isLoaded = true;
+    notifyListeners();
+  }
+
+  /// Switch to a different profile's data (reloads progress from prefs)
+  Future<void> switchProfile(String profileId) async {
+    _profileId = profileId;
+    _progressMap.clear();
+    _lastLessonId = null;
+    _loadProgress();
+    _lastLessonId = _prefs?.getString('${_prefix}last_lesson_id');
     notifyListeners();
   }
 
   void _loadProgress() {
     final keys =
-        _prefs?.getKeys().where((k) => k.startsWith('progress_')) ?? [];
+        _prefs?.getKeys().where((k) => k.startsWith('${_prefix}progress_')) ??
+        [];
     for (final key in keys) {
       final json = _prefs?.getString(key);
       if (json != null) {
@@ -78,7 +99,10 @@ class ProgressProvider extends ChangeNotifier {
   }
 
   Future<void> _saveProgress(LessonProgress progress) async {
-    await _prefs?.setString('progress_${progress.lessonId}', progress.encode());
+    await _prefs?.setString(
+      '${_prefix}progress_${progress.lessonId}',
+      progress.encode(),
+    );
   }
 
   /// Get progress for a specific lesson
@@ -150,17 +174,20 @@ class ProgressProvider extends ChangeNotifier {
     return attempted.fold(0.0, (sum, p) => sum + p.bestWpm) / attempted.length;
   }
 
-  /// Reset all progress
+  /// Reset all progress for the current profile
   Future<void> resetAll() async {
     _progressMap.clear();
     _lastLessonId = null;
     final keys =
-        _prefs?.getKeys().where((k) => k.startsWith('progress_')).toList() ??
+        _prefs
+            ?.getKeys()
+            .where((k) => k.startsWith('${_prefix}progress_'))
+            .toList() ??
         [];
     for (final key in keys) {
       await _prefs?.remove(key);
     }
-    await _prefs?.remove('last_lesson_id');
+    await _prefs?.remove('${_prefix}last_lesson_id');
     notifyListeners();
   }
 }

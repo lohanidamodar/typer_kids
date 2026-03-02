@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'providers/profile_provider.dart';
 import 'providers/progress_provider.dart';
 
 void main() async {
@@ -12,27 +13,44 @@ void main() async {
   // Ensure imperative API calls (push, pushReplacement) update the browser URL
   GoRouter.optionURLReflectsImperativeAPIs = true;
 
-  // Initialize progress provider before app starts
-  final progressProvider = ProgressProvider();
-  await progressProvider.init();
+  // Initialize providers before app starts
+  final profileProvider = ProfileProvider();
+  await profileProvider.init();
 
-  runApp(TyperKidsApp(progressProvider: progressProvider));
+  final progressProvider = ProgressProvider();
+  // Load SharedPreferences instance, then load data for the active profile
+  await progressProvider.init(profileId: profileProvider.activeProfileId ?? '');
+
+  runApp(
+    TyperKidsApp(
+      profileProvider: profileProvider,
+      progressProvider: progressProvider,
+    ),
+  );
 }
 
 class TyperKidsApp extends StatelessWidget {
+  final ProfileProvider profileProvider;
   final ProgressProvider progressProvider;
 
-  const TyperKidsApp({super.key, required this.progressProvider});
+  const TyperKidsApp({
+    super.key,
+    required this.profileProvider,
+    required this.progressProvider,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: progressProvider,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: profileProvider),
+        ChangeNotifierProvider.value(value: progressProvider),
+      ],
       child: MaterialApp.router(
         title: 'Typer Kids',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.theme,
-        routerConfig: AppRouter.router,
+        routerConfig: AppRouter.router(profileProvider),
       ),
     );
   }

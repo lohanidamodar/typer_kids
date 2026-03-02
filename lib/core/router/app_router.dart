@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../data/lesson_curriculum.dart';
 import '../../models/typing_stats.dart';
+import '../../providers/profile_provider.dart';
 import '../../screens/home_screen.dart';
 import '../../screens/lesson_list_screen.dart';
+import '../../screens/profile_screen.dart';
 import '../../screens/results_screen.dart';
 import '../../screens/settings_screen.dart';
 import '../../screens/typing_screen.dart';
@@ -12,6 +15,7 @@ import '../../screens/typing_screen.dart';
 /// Centralized router configuration using go_router.
 ///
 /// Routes:
+///   /profiles                  → Profile picker / manager
 ///   /                          → Home
 ///   /lessons                   → Lesson list
 ///   /lesson/:lessonId          → Typing screen (intro + practice)
@@ -22,10 +26,27 @@ class AppRouter {
 
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-  static final GoRouter router = GoRouter(
+  static GoRouter router(ProfileProvider profileProvider) => GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/',
+    refreshListenable: profileProvider,
+    redirect: (context, state) {
+      final profileProv = Provider.of<ProfileProvider>(context, listen: false);
+      final hasActive = profileProv.hasActiveProfile;
+      final onProfilePage = state.matchedLocation == '/profiles';
+
+      // If no active profile and not already on profile page, redirect there
+      if (!hasActive && !onProfilePage) return '/profiles';
+      // If has active profile and on profile page, go home
+      // (only on initial nav, not user-initiated)
+      return null;
+    },
     routes: [
+      GoRoute(
+        path: '/profiles',
+        name: 'profiles',
+        builder: (context, state) => const ProfileScreen(),
+      ),
       GoRoute(
         path: '/',
         name: 'home',
@@ -58,8 +79,7 @@ class AppRouter {
               final stats = state.extra as TypingStats?;
               // If there are no stats (e.g. page refresh on web), redirect
               // to the lesson so the user can play it again.
-              if (lessonId == null ||
-                  LessonCurriculum.byId(lessonId) == null) {
+              if (lessonId == null || LessonCurriculum.byId(lessonId) == null) {
                 return '/';
               }
               if (stats == null) {

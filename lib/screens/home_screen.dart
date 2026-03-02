@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme/app_colors.dart';
+import '../providers/profile_provider.dart';
 import '../providers/progress_provider.dart';
 
 /// The main home screen with fun kid-friendly design
@@ -33,6 +34,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _openLessonList();
     } else if (key == LogicalKeyboardKey.keyS) {
       _openSettings();
+    } else if (key == LogicalKeyboardKey.keyP) {
+      _switchProfile();
     }
   }
 
@@ -48,6 +51,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openSettings() {
     context.push('/settings');
+  }
+
+  void _switchProfile() {
+    context.push('/profiles');
   }
 
   @override
@@ -75,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     constraints: BoxConstraints(maxWidth: maxContentWidth),
                     child: Column(
                       children: [
+                        _buildProfileChip(context),
                         const SizedBox(height: 12),
                         _buildHeader(context),
                         const SizedBox(height: 24),
@@ -86,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 28),
                         _buildStatsCards(context, progress),
                         const SizedBox(height: 20),
-                        _buildSettingsButton(context),
+                        _buildBottomButtons(context),
                         const SizedBox(height: 20),
                       ],
                     ),
@@ -328,24 +336,88 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSettingsButton(BuildContext context) {
-    return TextButton.icon(
-      onPressed: () => _openSettings(),
-      icon: const Icon(Icons.settings_rounded, color: AppColors.textSecondary),
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Settings',
-            style: GoogleFonts.fredoka(
-              fontSize: 16,
-              color: AppColors.textSecondary,
+  Widget _buildProfileChip(BuildContext context) {
+    final profileProv = context.watch<ProfileProvider>();
+    final profile = profileProv.activeProfile;
+    if (profile == null) return const SizedBox.shrink();
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: ActionChip(
+        onPressed: () => _switchProfile(),
+        avatar: Text(profile.emoji, style: const TextStyle(fontSize: 18)),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              profile.name,
+              style: GoogleFonts.fredoka(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
             ),
-          ),
-          const SizedBox(width: 6),
-          _ShortcutBadge(label: 'S'),
-        ],
+            const SizedBox(width: 4),
+            _ShortcutBadge(label: 'P'),
+          ],
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
       ),
+    );
+  }
+
+  Widget _buildBottomButtons(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        TextButton.icon(
+          onPressed: () => _switchProfile(),
+          icon: const Icon(
+            Icons.people_rounded,
+            color: AppColors.textSecondary,
+            size: 20,
+          ),
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Profiles',
+                style: GoogleFonts.fredoka(
+                  fontSize: 16,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 6),
+              _ShortcutBadge(label: 'P'),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        TextButton.icon(
+          onPressed: () => _openSettings(),
+          icon: const Icon(
+            Icons.settings_rounded,
+            color: AppColors.textSecondary,
+            size: 20,
+          ),
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Settings',
+                style: GoogleFonts.fredoka(
+                  fontSize: 16,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 6),
+              _ShortcutBadge(label: 'S'),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
