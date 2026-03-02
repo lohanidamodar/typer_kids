@@ -1,0 +1,123 @@
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../data/lesson_curriculum.dart';
+import '../models/lesson_progress.dart';
+import '../models/typing_stats.dart';
+
+/// Manages overall progress across all lessons
+class ProgressProvider extends ChangeNotifier {
+  final Map<String, LessonProgress> _progressMap = {};
+  SharedPreferences? _prefs;
+  bool _isLoaded = false;
+
+  bool get isLoaded => _isLoaded;
+
+  /// Initialize and load saved progress
+  Future<void> init() async {
+    _prefs = await SharedPreferences.getInstance();
+    _loadProgress();
+    _isLoaded = true;
+    notifyListeners();
+  }
+
+  void _loadProgress() {
+    final keys =
+        _prefs?.getKeys().where((k) => k.startsWith('progress_')) ?? [];
+    for (final key in keys) {
+      final json = _prefs?.getString(key);
+      if (json != null) {
+        try {
+          final progress = LessonProgress.decode(json);
+          _progressMap[progress.lessonId] = progress;
+        } catch (_) {
+          // Ignore corrupted data
+        }
+      }
+    }
+  }
+
+  Future<void> _saveProgress(LessonProgress progress) async {
+    await _prefs?.setString('progress_${progress.lessonId}', progress.encode());
+  }
+
+  /// Get progress for a specific lesson
+  LessonProgress getProgress(String lessonId) {
+    return _progressMap[lessonId] ?? LessonProgress(lessonId: lessonId);
+  }
+
+  /// Record a completed exercise attempt
+  Future<void> recordAttempt(String lessonId, TypingStats stats) async {
+    final current = getProgress(lessonId);
+    final updated = current.withNewAttempt(stats);
+    _progressMap[lessonId] = updated;
+    await _saveProgress(updated);
+    notifyListeners();
+  }
+
+  /// Check if a lesson is unlocked (previous lesson completed or first lesson)
+  bool isLessonUnlocked(String lessonId) {
+    final lesson = LessonCurriculum.byId(lessonId);
+    if (lesson == null) return false;
+
+    // First lesson in any category is always unlocked
+    final categoryLessons = LessonCurriculum.byCategory(lesson.category);
+    if (categoryLessons.isEmpty) return false;
+    if (categoryLessons.first.id == lessonId) return true;
+
+    // Otherwise, the previous lesson in the category must be completed
+    final index = categoryLessons.indexWhere((l) => l.id == lessonId);
+    if (index <= 0) return true;
+    final prevLesson = categoryLessons[index - 1];
+    return getProgress(prevLesson.id).completed;
+  }
+
+  /// Total stars earned
+  int get totalStars {
+    return _progressMap.values.fold(0, (sum, p) => sum + p.bestStarRating);
+  }
+
+  /// Maximum possible stars
+  int get maxStars => LessonCurriculum.allLessons.length * 5;
+
+  /// Total lessons completed
+  int get completedLessons {
+    return _progressMap.values.where((p) => p.completed).length;
+  }
+
+  /// Total lessons available
+  int get totalLessons => LessonCurriculum.allLessons.length;
+
+  /// Overall completion percentage
+  double get completionPercentage {
+    if (totalLessons == 0) return 0;
+    return (completedLessons / totalLessons) * 100;
+  }
+
+  /// Average accuracy across all attempted lessons
+  double get averageAccuracy {
+    final attempted = _progressMap.values.where((p) => p.attempts > 0);
+    if (attempted.isEmpty) return 0;
+    return attempted.fold(0.0, (sum, p) => sum + p.bestAccuracy) /
+        attempted.length;
+  }
+
+  /// Average WPM across all attempted lessons
+  double get averageWpm {
+    final attempted = _progressMap.values.where((p) => p.attempts > 0);
+    if (attempted.isEmpty) return 0;
+    return attempted.fold(0.0, (sum, p) => sum + p.bestWpm) / attempted.length;
+  }
+
+  /// Reset all progress
+  Future<void> resetAll() async {
+    _progressMap.clear();
+    final keys =
+        _prefs?.getKeys().where((k) => k.startsWith('progress_')).toList() ??
+        [];
+    for (final key in keys) {
+      await _prefs?.remove(key);
+    }
+    notifyListeners();
+  }
+}
