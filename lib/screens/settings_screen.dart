@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -6,8 +8,28 @@ import '../core/theme/app_colors.dart';
 import '../providers/progress_provider.dart';
 
 /// Simple settings screen for resetting progress and toggling options
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      context.pop();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,72 +37,77 @@ class SettingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          // Stats overview
-          _buildSectionHeader('Your Progress'),
-          const SizedBox(height: 12),
-          _buildInfoCard(
-            context,
-            children: [
-              _buildInfoRow(
-                'Lessons Completed',
-                '${progress.completedLessons}/${progress.totalLessons}',
-              ),
-              _buildInfoRow('Total Stars', '${progress.totalStars}'),
-              _buildInfoRow(
-                'Average Accuracy',
-                progress.averageAccuracy > 0
-                    ? '${progress.averageAccuracy.toStringAsFixed(1)}%'
-                    : 'N/A',
-              ),
-              _buildInfoRow(
-                'Average Speed',
-                progress.averageWpm > 0
-                    ? '${progress.averageWpm.toStringAsFixed(0)} WPM'
-                    : 'N/A',
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
+      body: KeyboardListener(
+        focusNode: _focusNode,
+        autofocus: true,
+        onKeyEvent: _handleKeyEvent,
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            // Stats overview
+            _buildSectionHeader('Your Progress'),
+            const SizedBox(height: 12),
+            _buildInfoCard(
+              context,
+              children: [
+                _buildInfoRow(
+                  'Lessons Completed',
+                  '${progress.completedLessons}/${progress.totalLessons}',
+                ),
+                _buildInfoRow('Total Stars', '${progress.totalStars}'),
+                _buildInfoRow(
+                  'Average Accuracy',
+                  progress.averageAccuracy > 0
+                      ? '${progress.averageAccuracy.toStringAsFixed(1)}%'
+                      : 'N/A',
+                ),
+                _buildInfoRow(
+                  'Average Speed',
+                  progress.averageWpm > 0
+                      ? '${progress.averageWpm.toStringAsFixed(0)} WPM'
+                      : 'N/A',
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
 
-          // Danger zone
-          _buildSectionHeader('Danger Zone'),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _showResetDialog(context),
-              icon: const Icon(Icons.delete_forever_rounded),
-              label: Text(
-                'Reset All Progress',
-                style: GoogleFonts.fredoka(fontSize: 16),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.incorrect,
-                side: const BorderSide(color: AppColors.incorrect),
-                padding: const EdgeInsets.all(16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            // Danger zone
+            _buildSectionHeader('Danger Zone'),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showResetDialog(context),
+                icon: const Icon(Icons.delete_forever_rounded),
+                label: Text(
+                  'Reset All Progress',
+                  style: GoogleFonts.fredoka(fontSize: 16),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.incorrect,
+                  side: const BorderSide(color: AppColors.incorrect),
+                  padding: const EdgeInsets.all(16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 40),
+            const SizedBox(height: 40),
 
-          // About
-          _buildSectionHeader('About'),
-          const SizedBox(height: 12),
-          _buildInfoCard(
-            context,
-            children: [
-              _buildInfoRow('App', 'Typer Kids'),
-              _buildInfoRow('Version', '1.0.0'),
-              _buildInfoRow('Made with', '❤️ and Flutter'),
-            ],
-          ),
-        ],
+            // About
+            _buildSectionHeader('About'),
+            const SizedBox(height: 12),
+            _buildInfoCard(
+              context,
+              children: [
+                _buildInfoRow('App', 'Typer Kids'),
+                _buildInfoRow('Version', '1.0.0'),
+                _buildInfoRow('Made with', '❤️ and Flutter'),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

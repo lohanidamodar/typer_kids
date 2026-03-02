@@ -1,6 +1,7 @@
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/theme/app_colors.dart';
@@ -8,7 +9,6 @@ import '../data/lesson_curriculum.dart';
 import '../models/lesson.dart';
 import '../models/typing_stats.dart';
 import '../widgets/star_rating.dart';
-import 'typing_screen.dart';
 
 /// Celebration screen shown after completing a lesson
 class ResultsScreen extends StatefulWidget {
@@ -65,23 +65,19 @@ class _ResultsScreenState extends State<ResultsScreen>
     } else if (key == LogicalKeyboardKey.keyR) {
       _retryLesson();
     } else if (key == LogicalKeyboardKey.escape) {
-      Navigator.of(context).pop();
+      context.pop();
     }
   }
 
   void _goNextLesson() {
     final nextLesson = LessonCurriculum.nextLesson(widget.lesson.id);
     if (nextLesson != null) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => TypingScreen(lesson: nextLesson)),
-      );
+      context.pushReplacement('/lesson/${nextLesson.id}');
     }
   }
 
   void _retryLesson() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => TypingScreen(lesson: widget.lesson)),
-    );
+    context.pushReplacement('/lesson/${widget.lesson.id}');
   }
 
   @override
@@ -364,7 +360,7 @@ class _ResultsScreenState extends State<ResultsScreen>
           height: 56,
           child: OutlinedButton.icon(
             onPressed: () {
-              Navigator.of(context).pop();
+              context.pop();
             },
             icon: const Icon(Icons.home_rounded),
             label: Row(

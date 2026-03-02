@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -10,7 +11,6 @@ import '../providers/typing_provider.dart';
 import '../widgets/finger_guide.dart';
 import '../widgets/keyboard_widget.dart';
 import '../widgets/typing_display.dart';
-import 'results_screen.dart';
 
 /// The main typing practice screen where kids do the actual typing exercises
 class TypingScreen extends StatefulWidget {
@@ -66,7 +66,7 @@ class _TypingScreenState extends State<TypingScreen> {
     if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.space) {
       _startLesson();
     } else if (key == LogicalKeyboardKey.escape) {
-      Navigator.of(context).pop();
+      context.pop();
     }
   }
 
@@ -105,10 +105,9 @@ class _TypingScreenState extends State<TypingScreen> {
 
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => ResultsScreen(lesson: widget.lesson, stats: stats),
-          ),
+        context.pushReplacement(
+          '/lesson/${widget.lesson.id}/results',
+          extra: stats,
         );
       }
     });
@@ -260,7 +259,7 @@ class _TypingScreenState extends State<TypingScreen> {
                   ),
                   const SizedBox(height: 16),
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () => context.pop(),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -528,7 +527,7 @@ class _TypingScreenState extends State<TypingScreen> {
   void _showQuitDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Leave Lesson?',
@@ -543,7 +542,7 @@ class _TypingScreenState extends State<TypingScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: Text(
               'Stay',
               style: GoogleFonts.fredoka(color: AppColors.primary),
@@ -551,8 +550,8 @@ class _TypingScreenState extends State<TypingScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop(); // Close dialog
-              Navigator.of(context).pop(); // Close typing screen
+              Navigator.of(dialogContext).pop(); // Close dialog
+              context.pop(); // Pop typing screen via go_router
             },
             child: Text(
               'Leave',

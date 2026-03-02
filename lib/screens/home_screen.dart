@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme/app_colors.dart';
 import '../providers/progress_provider.dart';
-import 'lesson_list_screen.dart';
-import 'settings_screen.dart';
-import 'typing_screen.dart';
 
 /// The main home screen with fun kid-friendly design
 class HomeScreen extends StatefulWidget {
@@ -41,21 +39,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void _startRecommendedLesson() {
     final progress = Provider.of<ProgressProvider>(context, listen: false);
     final recommended = progress.recommendedLesson;
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => TypingScreen(lesson: recommended)),
-    );
+    context.push('/lesson/${recommended.id}');
   }
 
   void _openLessonList() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const LessonListScreen()));
+    context.push('/lessons');
   }
 
   void _openSettings() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+    context.push('/settings');
   }
 
   @override

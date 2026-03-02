@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
@@ -8,7 +9,6 @@ import '../data/lesson_curriculum.dart';
 import '../models/lesson.dart';
 import '../providers/progress_provider.dart';
 import '../widgets/star_rating.dart';
-import 'typing_screen.dart';
 
 /// Screen showing all available lessons grouped by category
 class LessonListScreen extends StatefulWidget {
@@ -30,7 +30,7 @@ class _LessonListScreenState extends State<LessonListScreen> {
   void _handleKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return;
     if (event.logicalKey == LogicalKeyboardKey.escape) {
-      Navigator.of(context).pop();
+      context.pop();
     }
   }
 
@@ -41,7 +41,7 @@ class _LessonListScreenState extends State<LessonListScreen> {
         title: const Text('Choose a Lesson'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.pop(),
         ),
       ),
       body: KeyboardListener(
@@ -173,11 +173,7 @@ class _LessonCard extends StatelessWidget {
         child: InkWell(
           onTap: isUnlocked
               ? () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => TypingScreen(lesson: lesson),
-                    ),
-                  );
+                  context.push('/lesson/${lesson.id}');
                 }
               : null,
           borderRadius: BorderRadius.circular(14),
