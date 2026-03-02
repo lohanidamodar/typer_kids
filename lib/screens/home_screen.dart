@@ -36,6 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
       _openSettings();
     } else if (key == LogicalKeyboardKey.keyP) {
       _switchProfile();
+    } else if (key == LogicalKeyboardKey.keyG) {
+      _openGames();
+    } else if (key == LogicalKeyboardKey.keyF) {
+      _openSandbox();
     }
   }
 
@@ -55,6 +59,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _switchProfile() {
     context.push('/profiles');
+  }
+
+  void _openGames() {
+    context.push('/games');
+  }
+
+  void _openSandbox() {
+    context.push('/sandbox');
   }
 
   @override
@@ -91,6 +103,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         _buildContinueButton(context, progress),
                         const SizedBox(height: 12),
                         _buildAllLessonsButton(context),
+                        const SizedBox(height: 20),
+                        _buildActivities(context),
                         const SizedBox(height: 28),
                         _buildStatsCards(context, progress),
                         const SizedBox(height: 20),
@@ -301,6 +315,42 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildActivities(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 10),
+          child: Text(
+            'More Activities',
+            style: GoogleFonts.fredoka(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        _ActivityCard(
+          emoji: '🎮',
+          title: 'Typing Games',
+          subtitle: 'Have fun while you practice!',
+          shortcut: 'G',
+          color: AppColors.accent,
+          onTap: () => _openGames(),
+        ),
+        const SizedBox(height: 10),
+        _ActivityCard(
+          emoji: '📖',
+          title: 'Free Practice',
+          subtitle: 'Type classic stories at your pace',
+          shortcut: 'F',
+          color: AppColors.secondary,
+          onTap: () => _openSandbox(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatsCards(BuildContext context, ProgressProvider progress) {
     return Row(
       children: [
@@ -448,6 +498,82 @@ class _ShortcutBadge extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w600,
           color: light ? Colors.white : AppColors.primary,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActivityCard extends StatelessWidget {
+  final String emoji;
+  final String title;
+  final String subtitle;
+  final String shortcut;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActivityCard({
+    required this.emoji,
+    required this.title,
+    required this.subtitle,
+    required this.shortcut,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 32)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.fredoka(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.nunito(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _ShortcutBadge(label: shortcut),
+              const SizedBox(width: 6),
+              Icon(Icons.arrow_forward_ios_rounded, size: 16, color: color),
+            ],
+          ),
         ),
       ),
     );

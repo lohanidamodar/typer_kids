@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/theme/app_colors.dart';
-import '../data/lesson_curriculum.dart';
+import '../data/lesson_curriculum_selector.dart';
 import '../models/lesson.dart';
 import '../models/typing_stats.dart';
 import '../widgets/star_rating.dart';

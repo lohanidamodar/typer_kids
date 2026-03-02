@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../data/lesson_curriculum.dart';
+import '../data/lesson_curriculum_selector.dart';
 import '../models/lesson.dart';
 import '../models/lesson_progress.dart';
 import '../models/typing_stats.dart';

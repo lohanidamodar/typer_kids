@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../data/lesson_curriculum.dart';
+import '../../data/lesson_curriculum_selector.dart';
 import '../../models/typing_stats.dart';
 import '../../providers/profile_provider.dart';
+import '../../screens/games/falling_words_screen.dart';
+import '../../screens/games/game_menu_screen.dart';
 import '../../screens/home_screen.dart';
 import '../../screens/lesson_list_screen.dart';
 import '../../screens/profile_screen.dart';
 import '../../screens/results_screen.dart';
+import '../../screens/sandbox/sandbox_screen.dart';
 import '../../screens/settings_screen.dart';
 import '../../screens/typing_screen.dart';
 
@@ -20,6 +23,9 @@ import '../../screens/typing_screen.dart';
 ///   /lessons                   → Lesson list
 ///   /lesson/:lessonId          → Typing screen (intro + practice)
 ///   /lesson/:lessonId/results  → Results / celebration screen
+///   /games                   → Game menu
+///   /games/falling-words      → Falling words game
+///   /sandbox                  → Free practice sandbox
 ///   /settings                  → Settings
 class AppRouter {
   AppRouter._();
@@ -100,6 +106,24 @@ class AppRouter {
         path: '/settings',
         name: 'settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/games',
+        name: 'games',
+        builder: (context, state) => const GameMenuScreen(),
+        routes: [
+          GoRoute(
+            path: 'falling-words',
+            name: 'falling-words',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const FallingWordsScreen(),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/sandbox',
+        name: 'sandbox',
+        builder: (context, state) => const SandboxScreen(),
       ),
     ],
     errorBuilder: (context, state) => const HomeScreen(),

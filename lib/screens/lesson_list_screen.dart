@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme/app_colors.dart';
-import '../data/lesson_curriculum.dart';
+import '../data/lesson_curriculum_selector.dart';
 import '../models/lesson.dart';
 import '../providers/progress_provider.dart';
 import '../widgets/star_rating.dart';
