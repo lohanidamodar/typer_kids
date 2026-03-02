@@ -9,12 +9,14 @@ class TypingDisplay extends StatelessWidget {
   final String text;
   final List<CharState> charStates;
   final int cursorPosition;
+  final double fontSize;
 
   const TypingDisplay({
     super.key,
     required this.text,
     required this.charStates,
     required this.cursorPosition,
+    this.fontSize = 28,
   });
 
   @override
@@ -59,7 +61,10 @@ class TypingDisplay extends StatelessWidget {
           }
 
           return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: (fontSize * 0.07).clamp(1, 3),
+              vertical: (fontSize * 0.14).clamp(2, 6),
+            ),
             decoration: BoxDecoration(
               color: bgColor,
               borderRadius: BorderRadius.circular(4),
@@ -72,7 +77,7 @@ class TypingDisplay extends StatelessWidget {
             child: Text(
               char == ' ' ? '␣' : char,
               style: GoogleFonts.robotoMono(
-                fontSize: 28,
+                fontSize: fontSize,
                 fontWeight: state == CharState.current
                     ? FontWeight.bold
                     : FontWeight.w400,

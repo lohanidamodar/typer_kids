@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/lesson_curriculum.dart';
+import '../models/lesson.dart';
 import '../models/lesson_progress.dart';
 import '../models/typing_stats.dart';
 
@@ -10,13 +11,52 @@ class ProgressProvider extends ChangeNotifier {
   final Map<String, LessonProgress> _progressMap = {};
   SharedPreferences? _prefs;
   bool _isLoaded = false;
+  String? _lastLessonId;
 
   bool get isLoaded => _isLoaded;
+
+  /// The lesson the user should practice next (recommended flow)
+  Lesson get recommendedLesson {
+    // If there's a last lesson that isn't completed, resume it
+    if (_lastLessonId != null) {
+      final lastProgress = getProgress(_lastLessonId!);
+      if (!lastProgress.completed) {
+        final lesson = LessonCurriculum.byId(_lastLessonId!);
+        if (lesson != null) return lesson;
+      }
+      // If last lesson is completed, recommend the next one
+      final next = LessonCurriculum.nextLesson(_lastLessonId!);
+      if (next != null) return next;
+    }
+
+    // Otherwise find the first incomplete lesson in order
+    for (final lesson in LessonCurriculum.allLessons) {
+      final progress = getProgress(lesson.id);
+      if (!progress.completed) return lesson;
+    }
+
+    // All done — return first lesson for replay
+    return LessonCurriculum.allLessons.first;
+  }
+
+  /// Whether the user has started any lessons
+  bool get hasStarted => _progressMap.values.any((p) => p.attempts > 0);
+
+  /// Whether every lesson is completed
+  bool get allCompleted =>
+      completedLessons >= LessonCurriculum.allLessons.length;
+
+  /// Save which lesson the user last practiced
+  Future<void> setLastLesson(String lessonId) async {
+    _lastLessonId = lessonId;
+    await _prefs?.setString('last_lesson_id', lessonId);
+  }
 
   /// Initialize and load saved progress
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     _loadProgress();
+    _lastLessonId = _prefs?.getString('last_lesson_id');
     _isLoaded = true;
     notifyListeners();
   }
@@ -52,6 +92,7 @@ class ProgressProvider extends ChangeNotifier {
     final updated = current.withNewAttempt(stats);
     _progressMap[lessonId] = updated;
     await _saveProgress(updated);
+    await setLastLesson(lessonId);
     notifyListeners();
   }
 
@@ -112,12 +153,14 @@ class ProgressProvider extends ChangeNotifier {
   /// Reset all progress
   Future<void> resetAll() async {
     _progressMap.clear();
+    _lastLessonId = null;
     final keys =
         _prefs?.getKeys().where((k) => k.startsWith('progress_')).toList() ??
         [];
     for (final key in keys) {
       await _prefs?.remove(key);
     }
+    await _prefs?.remove('last_lesson_id');
     notifyListeners();
   }
 }

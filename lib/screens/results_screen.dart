@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/theme/app_colors.dart';
+import '../data/lesson_curriculum.dart';
 import '../models/lesson.dart';
 import '../models/typing_stats.dart';
 import '../widgets/star_rating.dart';
+import 'typing_screen.dart';
 
 /// Celebration screen shown after completing a lesson
 class ResultsScreen extends StatefulWidget {
@@ -245,15 +247,56 @@ class _ResultsScreenState extends State<ResultsScreen>
   }
 
   Widget _buildActionButtons(BuildContext context) {
+    final nextLesson = LessonCurriculum.nextLesson(widget.lesson.id);
+
     return Column(
       children: [
+        // Next lesson (primary action)
+        if (nextLesson != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => TypingScreen(lesson: nextLesson),
+                    ),
+                  );
+                },
+                icon: const Icon(
+                  Icons.arrow_forward_rounded,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  'Next Lesson: ${nextLesson.emoji} ${nextLesson.title}',
+                  style: GoogleFonts.fredoka(fontSize: 18, color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 4,
+                  shadowColor: AppColors.primary.withValues(alpha: 0.4),
+                ),
+              ),
+            ),
+          ),
         // Try again
         SizedBox(
           width: double.infinity,
           height: 56,
           child: ElevatedButton.icon(
             onPressed: () {
-              Navigator.of(context).pop();
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => TypingScreen(lesson: widget.lesson),
+                ),
+              );
             },
             icon: const Icon(Icons.replay_rounded, color: Colors.white),
             label: Text(
@@ -275,17 +318,11 @@ class _ResultsScreenState extends State<ResultsScreen>
           height: 56,
           child: OutlinedButton.icon(
             onPressed: () {
-              // Pop until we're back at the lesson list
-              Navigator.of(context).popUntil(
-                (route) => route.isFirst || route.settings.name == '/lessons',
-              );
-              // If we ended up at home, push lesson list
+              // Pop back to whatever screen launched the lesson (Home or LessonList)
+              Navigator.of(context).pop();
             },
-            icon: const Icon(Icons.list_rounded),
-            label: Text(
-              'Back to Lessons',
-              style: GoogleFonts.fredoka(fontSize: 20),
-            ),
+            icon: const Icon(Icons.home_rounded),
+            label: Text('Back', style: GoogleFonts.fredoka(fontSize: 20)),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.primary,
               side: const BorderSide(color: AppColors.primary, width: 2),

@@ -6,6 +6,7 @@ import '../core/theme/app_colors.dart';
 import '../providers/progress_provider.dart';
 import 'lesson_list_screen.dart';
 import 'settings_screen.dart';
+import 'typing_screen.dart';
 
 /// The main home screen with fun kid-friendly design
 class HomeScreen extends StatelessWidget {
@@ -17,28 +18,40 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              // App title with fun design
-              _buildHeader(context),
-              const SizedBox(height: 32),
-              // Mascot
-              _buildMascotGreeting(progress),
-              const SizedBox(height: 32),
-              // Stats summary
-              _buildStatsCards(context, progress),
-              const SizedBox(height: 32),
-              // Start button
-              _buildStartButton(context),
-              const SizedBox(height: 16),
-              // Settings
-              _buildSettingsButton(context),
-              const SizedBox(height: 32),
-            ],
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 700;
+            final maxContentWidth = isWide ? 560.0 : constraints.maxWidth;
+
+            return Center(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isWide ? 32 : 20,
+                  vertical: 20,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxContentWidth),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      _buildHeader(context),
+                      const SizedBox(height: 24),
+                      _buildMascotGreeting(progress),
+                      const SizedBox(height: 28),
+                      _buildContinueButton(context, progress),
+                      const SizedBox(height: 12),
+                      _buildAllLessonsButton(context),
+                      const SizedBox(height: 28),
+                      _buildStatsCards(context, progress),
+                      const SizedBox(height: 20),
+                      _buildSettingsButton(context),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -47,12 +60,12 @@ class HomeScreen extends StatelessWidget {
   Widget _buildHeader(BuildContext context) {
     return Column(
       children: [
-        Text('🐵', style: const TextStyle(fontSize: 64)),
-        const SizedBox(height: 8),
+        const Text('🐵', style: TextStyle(fontSize: 56)),
+        const SizedBox(height: 6),
         Text(
           'Typer Kids',
           style: GoogleFonts.fredoka(
-            fontSize: 48,
+            fontSize: 44,
             fontWeight: FontWeight.w700,
             color: AppColors.primary,
             shadows: [
@@ -64,11 +77,11 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
           'Learn to Type with Fun! 🎮',
           style: GoogleFonts.fredoka(
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.w400,
             color: AppColors.textSecondary,
           ),
@@ -101,7 +114,7 @@ class HomeScreen extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -116,19 +129,119 @@ class HomeScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 40)),
-          const SizedBox(width: 16),
+          Text(emoji, style: const TextStyle(fontSize: 36)),
+          const SizedBox(width: 14),
           Expanded(
             child: Text(
               greeting,
               style: GoogleFonts.fredoka(
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildContinueButton(BuildContext context, ProgressProvider progress) {
+    final recommended = progress.recommendedLesson;
+    final hasStarted = progress.hasStarted;
+    final allDone = progress.allCompleted;
+
+    String label;
+    String sublabel;
+    IconData icon;
+    if (allDone) {
+      label = 'Practice Again';
+      sublabel = '${recommended.emoji} ${recommended.title}';
+      icon = Icons.replay_rounded;
+    } else if (hasStarted) {
+      label = 'Continue';
+      sublabel = '${recommended.emoji} ${recommended.title}';
+      icon = Icons.play_arrow_rounded;
+    } else {
+      label = 'Start Learning!';
+      sublabel = '${recommended.emoji} ${recommended.title}';
+      icon = Icons.play_arrow_rounded;
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      height: 80,
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TypingScreen(lesson: recommended),
+            ),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 6,
+          shadowColor: AppColors.primary.withValues(alpha: 0.4),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 32),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.fredoka(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    sublabel,
+                    style: GoogleFonts.nunito(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAllLessonsButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton.icon(
+        onPressed: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const LessonListScreen()));
+        },
+        icon: const Icon(Icons.list_rounded),
+        label: Text('All Lessons', style: GoogleFonts.fredoka(fontSize: 18)),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          side: const BorderSide(color: AppColors.primary, width: 2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
       ),
     );
   }
@@ -168,43 +281,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStartButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 64,
-      child: ElevatedButton(
-        onPressed: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const LessonListScreen()));
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          elevation: 6,
-          shadowColor: AppColors.primary.withValues(alpha: 0.4),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.play_arrow_rounded, size: 32),
-            const SizedBox(width: 8),
-            Text(
-              'Start Typing!',
-              style: GoogleFonts.fredoka(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildSettingsButton(BuildContext context) {
     return TextButton.icon(
       onPressed: () {
@@ -240,7 +316,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -255,12 +331,12 @@ class _StatCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 28)),
+          Text(emoji, style: const TextStyle(fontSize: 26)),
           const SizedBox(height: 4),
           Text(
             value,
             style: GoogleFonts.fredoka(
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.w600,
               color: color,
             ),

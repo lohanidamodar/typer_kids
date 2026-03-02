@@ -653,6 +653,28 @@ class LessonCurriculum {
     }
   }
 
+  /// Get the next lesson after the given one (across all lessons by orderIndex)
+  static Lesson? nextLesson(String currentLessonId) {
+    final current = byId(currentLessonId);
+    if (current == null) return null;
+
+    // Find next lesson in the same category first
+    final categoryLessons = byCategory(current.category);
+    final idx = categoryLessons.indexWhere((l) => l.id == currentLessonId);
+    if (idx >= 0 && idx < categoryLessons.length - 1) {
+      return categoryLessons[idx + 1];
+    }
+
+    // If last in category, find first lesson of next category
+    final catIdx = categoryOrder.indexOf(current.category);
+    if (catIdx >= 0 && catIdx < categoryOrder.length - 1) {
+      final nextCatLessons = byCategory(categoryOrder[catIdx + 1]);
+      if (nextCatLessons.isNotEmpty) return nextCatLessons.first;
+    }
+
+    return null;
+  }
+
   /// All categories in display order
   static const List<LessonCategory> categoryOrder = [
     LessonCategory.homeRow,

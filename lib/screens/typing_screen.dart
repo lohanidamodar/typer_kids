@@ -32,6 +32,16 @@ class _TypingScreenState extends State<TypingScreen> {
     super.initState();
     _typingProvider = TypingProvider();
     _typingProvider.startLesson(widget.lesson);
+
+    // Track that user started this lesson
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<ProgressProvider>(
+          context,
+          listen: false,
+        ).setLastLesson(widget.lesson.id);
+      }
+    });
   }
 
   @override
@@ -283,44 +293,79 @@ class _TypingScreenState extends State<TypingScreen> {
           child: SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight - 32,
+                // Compute responsive sizes based on available space
+                final maxW = constraints.maxWidth;
+                final maxH = constraints.maxHeight;
+
+                // The keyboard is ~14.5 keys wide (13 keys + padding + offsets)
+                // Calculate key size to fill available width with some margin
+                final keyboardWidthKeys = 15.0; // effective key-width-units
+                final horizontalPad = maxW > 800 ? 32.0 : 16.0;
+                final availableWidth = maxW - horizontalPad * 2;
+                final keySizeFromWidth = (availableWidth / keyboardWidthKeys)
+                    .clamp(28.0, 64.0);
+
+                // Also constrain by height: keyboard ~6 keys tall, plus stats + display + guides
+                final keySizeFromHeight = ((maxH * 0.38) / 6).clamp(28.0, 64.0);
+
+                final keySize = keySizeFromWidth < keySizeFromHeight
+                    ? keySizeFromWidth
+                    : keySizeFromHeight;
+
+                // Text size scales with key size
+                final textFontSize = (keySize * 0.72).clamp(20.0, 42.0);
+
+                return Column(
+                  children: [
+                    // Live stats bar
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPad,
+                        vertical: 8,
+                      ),
+                      child: _buildLiveStats(),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Live stats bar
-                        _buildLiveStats(),
-                        const SizedBox(height: 16),
-                        // Finger guide
-                        FingerGuide(currentKey: _typingProvider.currentChar),
-                        const SizedBox(height: 12),
-                        // Text to type
-                        TypingDisplay(
-                          text: _typingProvider.currentText,
-                          charStates: _typingProvider.charStates,
-                          cursorPosition: _typingProvider.cursorPosition,
+                    // Finger guide
+                    FingerGuide(currentKey: _typingProvider.currentChar),
+                    const SizedBox(height: 8),
+                    // Text to type — takes available remaining space
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: horizontalPad,
                         ),
-                        const SizedBox(height: 8),
-                        // "Click here to type" prompt
-                        if (!_focusNode.hasFocus)
-                          _buildFocusPrompt()
-                        else
-                          const SizedBox(height: 32),
-                        const SizedBox(height: 12),
-                        // Virtual keyboard
-                        FittedBox(
-                          child: KeyboardWidget(
-                            activeKey: _typingProvider.currentChar,
-                            showFingerColors: true,
+                        child: Center(
+                          child: TypingDisplay(
+                            text: _typingProvider.currentText,
+                            charStates: _typingProvider.charStates,
+                            cursorPosition: _typingProvider.cursorPosition,
+                            fontSize: textFontSize,
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                    // "Click here to type" prompt
+                    if (!_focusNode.hasFocus)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: _buildFocusPrompt(),
+                      ),
+                    // Virtual keyboard — pinned to bottom
+                    Padding(
+                      padding: EdgeInsets.only(
+                        left: horizontalPad,
+                        right: horizontalPad,
+                        bottom: 12,
+                      ),
+                      child: Center(
+                        child: KeyboardWidget(
+                          activeKey: _typingProvider.currentChar,
+                          showFingerColors: true,
+                          keySize: keySize,
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
