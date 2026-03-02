@@ -181,7 +181,11 @@ class ProgressProvider extends ChangeNotifier {
     final keys =
         _prefs
             ?.getKeys()
-            .where((k) => k.startsWith('${_prefix}progress_'))
+            .where(
+              (k) =>
+                  k.startsWith('${_prefix}progress_') ||
+                  k.startsWith('${_prefix}highscore_'),
+            )
             .toList() ??
         [];
     for (final key in keys) {
@@ -189,5 +193,37 @@ class ProgressProvider extends ChangeNotifier {
     }
     await _prefs?.remove('${_prefix}last_lesson_id');
     notifyListeners();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // High scores — per-game, per-profile
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Get the high score for a specific game.
+  int getHighScore(String gameId) {
+    return _prefs?.getInt('${_prefix}highscore_$gameId') ?? 0;
+  }
+
+  /// Record a score for a game. Returns true if it's a new high score.
+  Future<bool> recordScore(String gameId, int score) async {
+    final current = getHighScore(gameId);
+    if (score > current) {
+      await _prefs?.setInt('${_prefix}highscore_$gameId', score);
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  /// Get all high scores as a map of gameId → score.
+  Map<String, int> get allHighScores {
+    final result = <String, int>{};
+    final prefix = '${_prefix}highscore_';
+    final keys = _prefs?.getKeys().where((k) => k.startsWith(prefix)) ?? [];
+    for (final key in keys) {
+      final gameId = key.substring(prefix.length);
+      result[gameId] = _prefs?.getInt(key) ?? 0;
+    }
+    return result;
   }
 }

@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,123 +12,110 @@ import '../../data/word_lists.dart';
 import '../../providers/progress_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Data types
+// Data
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum _Phase { setup, playing, gameOver }
 
-class _FallingWord {
+class _Bubble {
   final String word;
-  double x; // 0.0 – 1.0 (fraction of available width)
-  double y; // 0.0 – 1.0 (fraction of available height, 0 = top)
-  final double speed; // fraction of height per second
+  double x; // fraction 0..1
+  double y; // fraction 0..1
   final int colorIndex;
+  double life; // seconds remaining before it fades
+  final double maxLife;
 
-  _FallingWord({
+  _Bubble({
     required this.word,
     required this.x,
     required this.y,
-    required this.speed,
     required this.colorIndex,
-  });
+    required this.life,
+  }) : maxLife = life;
+
+  double get opacity => (life / maxLife).clamp(0.3, 1.0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Screen
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Falling words typing game — type words before they hit the ground!
-class FallingWordsScreen extends StatefulWidget {
-  const FallingWordsScreen({super.key});
+class WordBubblesScreen extends StatefulWidget {
+  const WordBubblesScreen({super.key});
 
   @override
-  State<FallingWordsScreen> createState() => _FallingWordsScreenState();
+  State<WordBubblesScreen> createState() => _WordBubblesScreenState();
 }
 
-class _FallingWordsScreenState extends State<FallingWordsScreen>
-    with SingleTickerProviderStateMixin {
-  // ── Visual ──
+class _WordBubblesScreenState extends State<WordBubblesScreen> {
   static const _bubbleColors = [
-    Color(0xFF4CAF50), // green
-    Color(0xFF2196F3), // blue
-    Color(0xFFFF9800), // orange
-    Color(0xFF9C27B0), // purple
-    Color(0xFFE91E63), // pink
-    Color(0xFF00BCD4), // teal
-    Color(0xFFFF5722), // deep orange
-    Color(0xFF3F51B5), // indigo
+    Color(0xFF26C6DA), // cyan
+    Color(0xFFAB47BC), // purple
+    Color(0xFF66BB6A), // green
+    Color(0xFFFF7043), // deep orange
+    Color(0xFF42A5F5), // blue
+    Color(0xFFEC407A), // pink
+    Color(0xFFFFA726), // orange
+    Color(0xFF5C6BC0), // indigo
   ];
 
   // ── State ──
   _Phase _phase = _Phase.setup;
   ContentDifficulty _difficulty = ContentDifficulty.easy;
 
-  final List<_FallingWord> _words = [];
+  final List<_Bubble> _bubbles = [];
   String _input = '';
-  _FallingWord? _target;
+  _Bubble? _target;
   int _score = 0;
-  int _lives = 5;
-  int _wordsDestroyed = 0;
-  int _wordsMissed = 0;
+  int _popped = 0;
+  int _missed = 0;
   int _streak = 0;
   int _bestStreak = 0;
-  DateTime? _gameStart;
-  Duration _gameDuration = Duration.zero;
   bool _isNewHighScore = false;
   int _highScore = 0;
 
-  // ── Animation ──
-  late final Ticker _ticker;
-  Duration _lastTick = Duration.zero;
-  double _spawnTimer = 0;
+  // Timer
+  Timer? _gameTimer;
+  Timer? _spawnTimer;
+  Timer? _tickTimer;
+  int _remainingSeconds = 60;
   final _random = Random();
 
-  // ── Focus ──
+  // Focus
   final _setupFocusNode = FocusNode();
   final _gameFocusNode = FocusNode();
   final _overFocusNode = FocusNode();
 
   // ── Difficulty config ──
+  int get _gameDuration => switch (_difficulty) {
+    ContentDifficulty.easy => 60,
+    ContentDifficulty.medium => 75,
+    ContentDifficulty.hard => 90,
+  };
+
   double get _spawnInterval => switch (_difficulty) {
-    ContentDifficulty.easy => 2.8,
-    ContentDifficulty.medium => 2.0,
-    ContentDifficulty.hard => 1.3,
+    ContentDifficulty.easy => 2.5,
+    ContentDifficulty.medium => 1.8,
+    ContentDifficulty.hard => 1.2,
   };
 
-  double get _minSpeed => switch (_difficulty) {
-    ContentDifficulty.easy => 0.06,
-    ContentDifficulty.medium => 0.10,
-    ContentDifficulty.hard => 0.14,
+  double get _bubbleLife => switch (_difficulty) {
+    ContentDifficulty.easy => 6.0,
+    ContentDifficulty.medium => 4.5,
+    ContentDifficulty.hard => 3.5,
   };
 
-  double get _maxSpeed => switch (_difficulty) {
-    ContentDifficulty.easy => 0.10,
-    ContentDifficulty.medium => 0.16,
-    ContentDifficulty.hard => 0.22,
+  int get _maxBubbles => switch (_difficulty) {
+    ContentDifficulty.easy => 4,
+    ContentDifficulty.medium => 6,
+    ContentDifficulty.hard => 8,
   };
-
-  int get _maxWords => switch (_difficulty) {
-    ContentDifficulty.easy => 5,
-    ContentDifficulty.medium => 7,
-    ContentDifficulty.hard => 10,
-  };
-
-  int get _startLives => switch (_difficulty) {
-    ContentDifficulty.easy => 5,
-    ContentDifficulty.medium => 4,
-    ContentDifficulty.hard => 3,
-  };
-
-  // ── Lifecycle ──
-  @override
-  void initState() {
-    super.initState();
-    _ticker = createTicker(_onTick);
-  }
 
   @override
   void dispose() {
-    _ticker.dispose();
+    _gameTimer?.cancel();
+    _spawnTimer?.cancel();
+    _tickTimer?.cancel();
     _setupFocusNode.dispose();
     _gameFocusNode.dispose();
     _overFocusNode.dispose();
@@ -136,84 +123,96 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   }
 
   // ── Game logic ──
+
   void _startGame() {
-    _words.clear();
+    _bubbles.clear();
     _input = '';
     _target = null;
     _score = 0;
-    _lives = _startLives;
-    _wordsDestroyed = 0;
-    _wordsMissed = 0;
+    _popped = 0;
+    _missed = 0;
     _streak = 0;
     _bestStreak = 0;
     _isNewHighScore = false;
     _highScore = 0;
-    _spawnTimer = _spawnInterval - 0.5; // spawn first word quickly
-    _lastTick = Duration.zero;
-    _gameStart = DateTime.now();
+    _remainingSeconds = _gameDuration;
     _phase = _Phase.playing;
-    _ticker.start();
     setState(() {});
+
+    // Countdown timer
+    _gameTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _remainingSeconds--;
+        if (_remainingSeconds <= 0) {
+          _endGame();
+        }
+      });
+    });
+
+    // Spawn timer
+    _spawnTimer = Timer.periodic(
+      Duration(milliseconds: (_spawnInterval * 1000).round()),
+      (_) {
+        if (!mounted || _phase != _Phase.playing) return;
+        _spawnBubble();
+      },
+    );
+
+    // Tick timer to fade bubbles
+    _tickTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      if (!mounted || _phase != _Phase.playing) return;
+      _tick();
+    });
+
+    // Spawn first bubble immediately
+    _spawnBubble();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _gameFocusNode.requestFocus();
     });
   }
 
-  void _onTick(Duration elapsed) {
-    if (_phase != _Phase.playing) return;
-
-    final dt = ((elapsed - _lastTick).inMicroseconds / 1e6).clamp(0.0, 0.1);
-    _lastTick = elapsed;
-
-    // Spawn
-    _spawnTimer += dt;
-    if (_spawnTimer >= _spawnInterval && _words.length < _maxWords) {
-      _spawnWord();
-      _spawnTimer = 0;
-    }
-
-    // Move
-    for (final w in _words) {
-      w.y += w.speed * dt;
-    }
-
-    // Missed words
-    final missed = _words.where((w) => w.y >= 1.0).toList();
-    for (final w in missed) {
-      _words.remove(w);
-      _wordsMissed++;
-      _streak = 0;
-      _lives--;
-      if (_target == w) {
-        _target = null;
-        _input = '';
-      }
-      if (_lives <= 0) {
-        _endGame();
-        return;
-      }
-    }
-
-    setState(() {});
-  }
-
-  void _spawnWord() {
+  void _spawnBubble() {
+    if (_bubbles.length >= _maxBubbles) return;
     String word;
     int tries = 0;
     do {
       word = WordLists.randomWord(_difficulty);
       tries++;
-    } while (_words.any((w) => w.word == word) && tries < 10);
+    } while (_bubbles.any((b) => b.word == word) && tries < 10);
 
-    _words.add(
-      _FallingWord(
+    _bubbles.add(
+      _Bubble(
         word: word,
-        x: _random.nextDouble() * 0.70 + 0.05,
-        y: -0.02,
-        speed: _minSpeed + _random.nextDouble() * (_maxSpeed - _minSpeed),
+        x: _random.nextDouble() * 0.7 + 0.05,
+        y: _random.nextDouble() * 0.7 + 0.05,
         colorIndex: _random.nextInt(_bubbleColors.length),
+        life: _bubbleLife,
       ),
     );
+    setState(() {});
+  }
+
+  void _tick() {
+    // Fade bubbles
+    final expired = <_Bubble>[];
+    for (final b in _bubbles) {
+      b.life -= 0.1;
+      if (b.life <= 0) expired.add(b);
+    }
+    for (final b in expired) {
+      _bubbles.remove(b);
+      _missed++;
+      _streak = 0;
+      if (_target == b) {
+        _target = null;
+        _input = '';
+      }
+    }
+    if (expired.isNotEmpty || _bubbles.isNotEmpty) {
+      setState(() {});
+    }
   }
 
   void _handleGameKey(KeyEvent event) {
@@ -240,9 +239,9 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     _input += char.toLowerCase();
     _updateTarget();
 
-    // Exact match → destroy
+    // Exact match → pop
     if (_target != null && _input == _target!.word) {
-      _destroyWord(_target!);
+      _popBubble(_target!);
     }
 
     setState(() {});
@@ -255,25 +254,25 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     }
     // Keep existing target if still valid
     if (_target != null &&
-        _words.contains(_target) &&
+        _bubbles.contains(_target) &&
         _target!.word.startsWith(_input)) {
       return;
     }
-    // Pick lowest matching word
+    // Pick bubble with most remaining life that matches
     _target = null;
-    for (final w in _words) {
-      if (w.word.startsWith(_input)) {
-        if (_target == null || w.y > _target!.y) {
-          _target = w;
+    for (final b in _bubbles) {
+      if (b.word.startsWith(_input)) {
+        if (_target == null || b.life < _target!.life) {
+          _target = b;
         }
       }
     }
   }
 
-  void _destroyWord(_FallingWord word) {
-    _words.remove(word);
-    _score += word.word.length * 10;
-    _wordsDestroyed++;
+  void _popBubble(_Bubble bubble) {
+    _bubbles.remove(bubble);
+    _score += bubble.word.length * 10 + (bubble.life * 5).round();
+    _popped++;
     _streak++;
     if (_streak > _bestStreak) _bestStreak = _streak;
     _input = '';
@@ -281,12 +280,12 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   }
 
   void _endGame() {
-    _ticker.stop();
-    _gameDuration = DateTime.now().difference(_gameStart ?? DateTime.now());
-    // Record high score
+    _gameTimer?.cancel();
+    _spawnTimer?.cancel();
+    _tickTimer?.cancel();
     final progress = Provider.of<ProgressProvider>(context, listen: false);
-    _highScore = progress.getHighScore('falling_words');
-    progress.recordScore('falling_words', _score).then((isNew) {
+    _highScore = progress.getHighScore('word_bubbles');
+    progress.recordScore('word_bubbles', _score).then((isNew) {
       if (mounted) setState(() => _isNewHighScore = isNew);
     });
     _phase = _Phase.gameOver;
@@ -297,7 +296,9 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   }
 
   void _showQuitDialog() {
-    _ticker.stop();
+    _gameTimer?.cancel();
+    _spawnTimer?.cancel();
+    _tickTimer?.cancel();
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -310,10 +311,35 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
       ),
     ).then((_) {
       if (_phase == _Phase.playing && mounted) {
-        _lastTick = Duration.zero;
-        _ticker.start();
+        // Resume timers
+        _gameTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (!mounted) return;
+          setState(() {
+            _remainingSeconds--;
+            if (_remainingSeconds <= 0) _endGame();
+          });
+        });
+        _spawnTimer = Timer.periodic(
+          Duration(milliseconds: (_spawnInterval * 1000).round()),
+          (_) {
+            if (!mounted || _phase != _Phase.playing) return;
+            _spawnBubble();
+          },
+        );
+        _tickTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+          if (!mounted || _phase != _Phase.playing) return;
+          _tick();
+        });
         _gameFocusNode.requestFocus();
       }
+    });
+  }
+
+  void _playAgain() {
+    _phase = _Phase.setup;
+    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupFocusNode.requestFocus();
     });
   }
 
@@ -363,13 +389,9 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
               final screenH = constraints.maxHeight;
               final isWide = screenW > 600;
               final isTall = screenH > 650;
-
               final hPad = isWide ? 40.0 : 20.0;
               final vPad = isTall ? 32.0 : 16.0;
               final maxW = isWide ? 520.0 : screenW;
-              final headerFontSize = isWide ? 34.0 : 26.0;
-              final emojiSize = isTall ? 56.0 : 36.0;
-              final sectionGap = isTall ? 32.0 : 16.0;
 
               return Center(
                 child: SingleChildScrollView(
@@ -381,7 +403,6 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                     constraints: BoxConstraints(maxWidth: maxW),
                     child: Column(
                       children: [
-                        // Back
                         Align(
                           alignment: Alignment.centerLeft,
                           child: TextButton.icon(
@@ -407,31 +428,33 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                           ),
                         ),
                         SizedBox(height: isTall ? 16 : 8),
-                        Text('⬇️', style: TextStyle(fontSize: emojiSize)),
+                        Text(
+                          '🫧',
+                          style: TextStyle(fontSize: isTall ? 56 : 36),
+                        ),
                         SizedBox(height: isTall ? 8 : 4),
                         Text(
-                          'Falling Words',
+                          'Word Bubbles',
                           style: GoogleFonts.fredoka(
-                            fontSize: headerFontSize,
+                            fontSize: isWide ? 34 : 26,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                            color: const Color(0xFF26C6DA),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Type the words before they reach the bottom!',
+                          'Pop the bubbles by typing the words!',
                           style: GoogleFonts.nunito(
-                            fontSize: isWide ? 16.0 : 14.0,
+                            fontSize: isWide ? 16 : 14,
                             color: AppColors.textSecondary,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        SizedBox(height: sectionGap),
-                        // Difficulty selector
+                        SizedBox(height: isTall ? 32 : 16),
                         Text(
                           'Choose Difficulty',
                           style: GoogleFonts.fredoka(
-                            fontSize: isWide ? 20.0 : 18.0,
+                            fontSize: isWide ? 20 : 18,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
@@ -451,21 +474,21 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                                   index: d.index + 1,
                                   selected: selected,
                                   compact: !isTall,
+                                  accentColor: const Color(0xFF26C6DA),
                                   onTap: () => setState(() => _difficulty = d),
                                 ),
                               ),
                             );
                           }).toList(),
                         ),
-                        SizedBox(height: sectionGap),
-                        // Start button
+                        SizedBox(height: isTall ? 32 : 16),
                         SizedBox(
                           width: isWide ? 280 : 220,
                           height: 56,
                           child: ElevatedButton(
                             onPressed: _startGame,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: const Color(0xFF26C6DA),
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
@@ -508,8 +531,14 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   // ── Playing ───────────────────────────────────────────────────────────────
 
   Widget _buildGame() {
+    final mins = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (_remainingSeconds % 60).toString().padLeft(2, '0');
+    final timerColor = _remainingSeconds <= 10
+        ? AppColors.incorrect
+        : AppColors.primary;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF0F8FF),
       body: KeyboardListener(
         focusNode: _gameFocusNode,
         autofocus: true,
@@ -520,9 +549,90 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
             child: Column(
               children: [
                 // Top bar
-                _buildTopBar(),
-                // Game area
-                Expanded(child: _buildGameArea()),
+                Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Text('⭐', style: const TextStyle(fontSize: 20)),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$_score',
+                        style: GoogleFonts.fredoka(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.starFilled,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(Icons.timer_outlined, color: timerColor, size: 20),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$mins:$secs',
+                        style: GoogleFonts.fredoka(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: timerColor,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (_streak > 1) ...[
+                        Text('🔥', style: const TextStyle(fontSize: 18)),
+                        const SizedBox(width: 2),
+                        Text(
+                          '$_streak',
+                          style: GoogleFonts.fredoka(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.secondary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFF26C6DA,
+                          ).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${_difficulty.emoji} ${_difficulty.label}',
+                          style: GoogleFonts.nunito(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF26C6DA),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Bubble area
+                Expanded(child: _buildBubbleArea()),
+
                 // Input area
                 _buildInputArea(),
                 const SizedBox(height: 12),
@@ -534,122 +644,25 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     );
   }
 
-  Widget _buildTopBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Score
-          Text('⭐', style: const TextStyle(fontSize: 20)),
-          const SizedBox(width: 4),
-          Text(
-            '$_score',
-            style: GoogleFonts.fredoka(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppColors.starFilled,
-            ),
-          ),
-          const Spacer(),
-          // Lives
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(_startLives, (i) {
-              final alive = i < _lives;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 1),
-                child: Icon(
-                  alive
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  color: alive ? AppColors.incorrect : Colors.grey.shade300,
-                  size: 22,
-                ),
-              );
-            }),
-          ),
-          const Spacer(),
-          // Streak
-          if (_streak > 1) ...[
-            Text('🔥', style: const TextStyle(fontSize: 18)),
-            const SizedBox(width: 2),
-            Text(
-              '$_streak',
-              style: GoogleFonts.fredoka(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.secondary,
-              ),
-            ),
-            const SizedBox(width: 12),
-          ],
-          // Difficulty label
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '${_difficulty.emoji} ${_difficulty.label}',
-              style: GoogleFonts.nunito(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGameArea() {
+  Widget _buildBubbleArea() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final areaW = constraints.maxWidth;
         final areaH = constraints.maxHeight;
+        final fontSize = areaW > 800
+            ? 24.0
+            : areaW > 500
+            ? 20.0
+            : 16.0;
 
         return Stack(
           clipBehavior: Clip.hardEdge,
           children: [
-            // Ground line
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                height: 3,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.incorrect.withValues(alpha: 0.0),
-                      AppColors.incorrect.withValues(alpha: 0.5),
-                      AppColors.incorrect.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Falling words
-            for (final w in _words) _buildWordBubble(w, areaW, areaH),
-            // Empty state hint
-            if (_words.isEmpty)
+            for (final b in _bubbles) _buildBubble(b, areaW, areaH, fontSize),
+            if (_bubbles.isEmpty)
               Center(
                 child: Text(
-                  'Get ready...',
+                  'Pop the bubbles! 🫧',
                   style: GoogleFonts.fredoka(
                     fontSize: 24,
                     color: AppColors.textSecondary.withValues(alpha: 0.4),
@@ -662,73 +675,67 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     );
   }
 
-  // Responsive font scale for game area
-  double get _wordFontSize {
-    final w = MediaQuery.of(context).size.width;
-    if (w > 1200) return 28;
-    if (w > 800) return 24;
-    return 20;
-  }
+  Widget _buildBubble(
+    _Bubble bubble,
+    double areaW,
+    double areaH,
+    double fontSize,
+  ) {
+    final isTarget = bubble == _target;
+    final color = _bubbleColors[bubble.colorIndex];
+    final size = bubble.word.length * (fontSize * 0.7) + 52;
 
-  double get _inputFontSize {
-    final w = MediaQuery.of(context).size.width;
-    if (w > 1200) return 30;
-    if (w > 800) return 26;
-    return 22;
-  }
-
-  Widget _buildWordBubble(_FallingWord word, double areaW, double areaH) {
-    final isTarget = word == _target;
-    final color = _bubbleColors[word.colorIndex];
-    final fontSize = _wordFontSize;
-
-    // Estimate width to clamp x
-    final estWidth = word.word.length * (fontSize * 0.7) + 32;
-    final maxLeft = (areaW - estWidth).clamp(0.0, double.infinity);
-    final left = (word.x * areaW).clamp(0.0, maxLeft);
-    final top = word.y * areaH;
+    final left = (bubble.x * (areaW - size)).clamp(0.0, areaW - size);
+    final top = (bubble.y * (areaH - size)).clamp(0.0, areaH - size);
 
     return Positioned(
       left: left,
       top: top,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        padding: EdgeInsets.symmetric(
-          horizontal: fontSize * 0.7,
-          vertical: fontSize * 0.4,
-        ),
-        decoration: BoxDecoration(
-          color: isTarget ? color : color.withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(14),
-          border: isTarget
-              ? Border.all(color: AppColors.starFilled, width: 2.5)
-              : null,
-          boxShadow: isTarget
-              ? [
-                  BoxShadow(
-                    color: AppColors.starFilled.withValues(alpha: 0.4),
-                    blurRadius: 12,
-                    spreadRadius: 1,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: bubble.opacity,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: EdgeInsets.symmetric(
+            horizontal: fontSize * 0.8,
+            vertical: fontSize * 0.5,
+          ),
+          decoration: BoxDecoration(
+            color: isTarget ? color : color.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(size / 2),
+            border: isTarget
+                ? Border.all(color: AppColors.starFilled, width: 3)
+                : Border.all(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    width: 2,
                   ),
-                ]
-              : [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.3),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+            boxShadow: isTarget
+                ? [
+                    BoxShadow(
+                      color: AppColors.starFilled.withValues(alpha: 0.4),
+                      blurRadius: 16,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+          ),
+          child: isTarget && _input.isNotEmpty
+              ? _buildPartialMatch(bubble.word, _input, fontSize)
+              : Text(
+                  bubble.word,
+                  style: GoogleFonts.fredoka(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
                   ),
-                ],
-        ),
-        child: isTarget && _input.isNotEmpty
-            ? _buildPartialMatch(word.word, _input, fontSize)
-            : Text(
-                word.word,
-                style: GoogleFonts.fredoka(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
                 ),
-              ),
+        ),
       ),
     );
   }
@@ -743,7 +750,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
             style: GoogleFonts.fredoka(
               fontSize: fontSize,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFFB9F6CA), // light green
+              color: const Color(0xFFB9F6CA),
             ),
           ),
           TextSpan(
@@ -763,7 +770,12 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     final hasMatch = _target != null;
     final hasInput = _input.isNotEmpty;
     final noMatch = hasInput && !hasMatch;
-    final fontSize = _inputFontSize;
+    final screenW = MediaQuery.of(context).size.width;
+    final fontSize = screenW > 800
+        ? 28.0
+        : screenW > 500
+        ? 24.0
+        : 20.0;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -778,7 +790,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
           color: noMatch
               ? AppColors.incorrect.withValues(alpha: 0.6)
               : hasMatch
-              ? AppColors.primary.withValues(alpha: 0.6)
+              ? const Color(0xFF26C6DA).withValues(alpha: 0.6)
               : Colors.grey.shade300,
           width: 2,
         ),
@@ -794,13 +806,13 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
         children: [
           Icon(
             Icons.keyboard_rounded,
-            color: hasInput ? AppColors.primary : Colors.grey.shade400,
+            color: hasInput ? const Color(0xFF26C6DA) : Colors.grey.shade400,
             size: fontSize,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              hasInput ? _input : 'Start typing...',
+              hasInput ? _input : 'Type a word...',
               style: GoogleFonts.fredoka(
                 fontSize: fontSize,
                 fontWeight: FontWeight.w500,
@@ -837,24 +849,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     }
   }
 
-  void _playAgain() {
-    _phase = _Phase.setup;
-    setState(() {});
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _setupFocusNode.requestFocus();
-    });
-  }
-
   Widget _buildGameOver() {
-    final minutes = _gameDuration.inMinutes
-        .remainder(60)
-        .toString()
-        .padLeft(2, '0');
-    final seconds = _gameDuration.inSeconds
-        .remainder(60)
-        .toString()
-        .padLeft(2, '0');
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: KeyboardListener(
@@ -868,15 +863,11 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
               final screenH = constraints.maxHeight;
               final isWide = screenW > 600;
               final isTall = screenH > 650;
-
               final hPad = isWide ? 40.0 : 20.0;
               final vPad = isTall ? 32.0 : 16.0;
               final maxW = isWide ? 460.0 : screenW;
-              final headerFontSize = isWide ? 36.0 : 28.0;
-              final emojiSize = isTall ? 56.0 : 36.0;
               final scoreFontSize = isTall ? 52.0 : 36.0;
               final sectionGap = isTall ? 24.0 : 12.0;
-              final statGap = isTall ? 12.0 : 8.0;
 
               return Center(
                 child: SingleChildScrollView(
@@ -888,14 +879,17 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                     constraints: BoxConstraints(maxWidth: maxW),
                     child: Column(
                       children: [
-                        Text('🎮', style: TextStyle(fontSize: emojiSize)),
+                        Text(
+                          '🫧',
+                          style: TextStyle(fontSize: isTall ? 56 : 36),
+                        ),
                         SizedBox(height: isTall ? 8 : 4),
                         Text(
-                          'Game Over!',
+                          'Time\'s Up!',
                           style: GoogleFonts.fredoka(
-                            fontSize: headerFontSize,
+                            fontSize: isWide ? 36 : 28,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.accent,
+                            color: const Color(0xFF26C6DA),
                           ),
                         ),
                         SizedBox(height: sectionGap),
@@ -907,7 +901,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                             gradient: LinearGradient(
                               colors: [
                                 AppColors.starFilled.withValues(alpha: 0.15),
-                                AppColors.secondary.withValues(alpha: 0.15),
+                                const Color(0xFF26C6DA).withValues(alpha: 0.15),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(20),
@@ -963,23 +957,22 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                           ),
                         ),
                         SizedBox(height: sectionGap),
-                        // Stats grid
                         Row(
                           children: [
                             _OverStat(
-                              emoji: '✅',
-                              label: 'Words',
-                              value: '$_wordsDestroyed',
+                              emoji: '🫧',
+                              label: 'Popped',
+                              value: '$_popped',
                             ),
                             const SizedBox(width: 12),
                             _OverStat(
-                              emoji: '❌',
+                              emoji: '💨',
                               label: 'Missed',
-                              value: '$_wordsMissed',
+                              value: '$_missed',
                             ),
                           ],
                         ),
-                        SizedBox(height: statGap),
+                        SizedBox(height: isTall ? 12 : 8),
                         Row(
                           children: [
                             _OverStat(
@@ -990,20 +983,19 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                             const SizedBox(width: 12),
                             _OverStat(
                               emoji: '⏱️',
-                              label: 'Time',
-                              value: '$minutes:$seconds',
+                              label: 'Duration',
+                              value: '${_gameDuration}s',
                             ),
                           ],
                         ),
                         SizedBox(height: sectionGap + 8),
-                        // Play again
                         SizedBox(
                           width: double.infinity,
                           height: 56,
                           child: ElevatedButton(
                             onPressed: _playAgain,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: const Color(0xFF26C6DA),
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
@@ -1055,7 +1047,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     );
   }
 
-  // ── Shared helpers ────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   Widget _keyBadge(String label, Color color) {
     return Container(
@@ -1086,6 +1078,7 @@ class _DifficultyCard extends StatelessWidget {
   final int index;
   final bool selected;
   final bool compact;
+  final Color accentColor;
   final VoidCallback onTap;
 
   const _DifficultyCard({
@@ -1093,6 +1086,7 @@ class _DifficultyCard extends StatelessWidget {
     required this.index,
     required this.selected,
     this.compact = false,
+    required this.accentColor,
     required this.onTap,
   });
 
@@ -1101,7 +1095,6 @@ class _DifficultyCard extends StatelessWidget {
     final vPad = compact ? 8.0 : 14.0;
     final emojiSize = compact ? 22.0 : 28.0;
     final labelSize = compact ? 14.0 : 16.0;
-    final descSize = compact ? 10.0 : 11.0;
 
     return GestureDetector(
       onTap: onTap,
@@ -1109,18 +1102,16 @@ class _DifficultyCard extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: EdgeInsets.symmetric(vertical: vPad, horizontal: 8),
         decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary.withValues(alpha: 0.12)
-              : Colors.white,
+          color: selected ? accentColor.withValues(alpha: 0.12) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? AppColors.primary : Colors.grey.shade300,
+            color: selected ? accentColor : Colors.grey.shade300,
             width: selected ? 2.5 : 1,
           ),
           boxShadow: selected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.15),
+                    color: accentColor.withValues(alpha: 0.15),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -1136,7 +1127,7 @@ class _DifficultyCard extends StatelessWidget {
               style: GoogleFonts.fredoka(
                 fontSize: labelSize,
                 fontWeight: FontWeight.w600,
-                color: selected ? AppColors.primary : AppColors.textPrimary,
+                color: selected ? accentColor : AppColors.textPrimary,
               ),
             ),
             if (!compact) ...[
@@ -1144,7 +1135,7 @@ class _DifficultyCard extends StatelessWidget {
               Text(
                 difficulty.description,
                 style: GoogleFonts.nunito(
-                  fontSize: descSize,
+                  fontSize: 11,
                   color: AppColors.textSecondary,
                 ),
                 textAlign: TextAlign.center,
@@ -1154,18 +1145,16 @@ class _DifficultyCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
+                color: accentColor.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                ),
+                border: Border.all(color: accentColor.withValues(alpha: 0.2)),
               ),
               child: Text(
                 '$index',
                 style: GoogleFonts.robotoMono(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+                  color: accentColor,
                 ),
               ),
             ),
@@ -1223,7 +1212,6 @@ class _OverStat extends StatelessWidget {
   }
 }
 
-/// Quit-game confirmation dialog with keyboard shortcuts.
 class _QuitDialog extends StatefulWidget {
   final VoidCallback onResume;
   final VoidCallback onQuit;
@@ -1254,25 +1242,23 @@ class _QuitDialogState extends State<_QuitDialog> {
     }
   }
 
-  Widget _badge(String label, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(left: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+  Widget _badge(String label, Color color) => Container(
+    margin: const EdgeInsets.only(left: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(4),
+      border: Border.all(color: color.withValues(alpha: 0.3)),
+    ),
+    child: Text(
+      label,
+      style: GoogleFonts.robotoMono(
+        fontSize: 10,
+        fontWeight: FontWeight.w600,
+        color: color,
       ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {

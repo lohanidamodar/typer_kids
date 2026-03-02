@@ -29,6 +29,10 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
       context.pop();
     } else if (key == LogicalKeyboardKey.digit1) {
       context.push('/games/falling-words');
+    } else if (key == LogicalKeyboardKey.digit2) {
+      context.push('/games/word-bubbles');
+    } else if (key == LogicalKeyboardKey.digit3) {
+      context.push('/games/speed-chase');
     }
   }
 
@@ -41,75 +45,116 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
         autofocus: true,
         onKeyEvent: _handleKeyEvent,
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: Column(
-                  children: [
-                    // Back button
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () => context.pop(),
-                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Back',
-                              style: GoogleFonts.fredoka(fontSize: 16),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final screenW = constraints.maxWidth;
+              final screenH = constraints.maxHeight;
+              final isWide = screenW > 600;
+              final isTall = screenH > 700;
+
+              final hPad = isWide ? 40.0 : 20.0;
+              final vPad = isTall ? 32.0 : 16.0;
+              final maxW = isWide ? 620.0 : screenW;
+              final headerFontSize = isWide ? 36.0 : 28.0;
+              final emojiSize = isTall ? 56.0 : 40.0;
+              final sectionGap = isTall ? 32.0 : 18.0;
+              final cardGap = isTall ? 14.0 : 10.0;
+
+              return Center(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: hPad,
+                    vertical: vPad,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxW),
+                    child: Column(
+                      children: [
+                        // Back button
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => context.pop(),
+                            icon: const Icon(
+                              Icons.arrow_back_rounded,
+                              size: 18,
                             ),
-                            const SizedBox(width: 6),
-                            _KeyBadge('Esc'),
-                          ],
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Back',
+                                  style: GoogleFonts.fredoka(fontSize: 16),
+                                ),
+                                const SizedBox(width: 6),
+                                _KeyBadge('Esc'),
+                              ],
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.textSecondary,
+                            ),
+                          ),
                         ),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.textSecondary,
+                        SizedBox(height: isTall ? 12 : 6),
+                        // Header
+                        Text('🎮', style: TextStyle(fontSize: emojiSize)),
+                        SizedBox(height: isTall ? 8 : 4),
+                        Text(
+                          'Typing Games',
+                          style: GoogleFonts.fredoka(
+                            fontSize: headerFontSize,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Have fun while you practice!',
+                          style: GoogleFonts.nunito(
+                            fontSize: isWide ? 16.0 : 14.0,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        SizedBox(height: sectionGap),
+                        // ── Game cards ──
+                        _GameCard(
+                          emoji: '⬇️',
+                          title: 'Falling Words',
+                          description:
+                              'Type the words before they reach the bottom!',
+                          shortcut: '1',
+                          color: AppColors.primary,
+                          compact: !isTall,
+                          onTap: () => context.push('/games/falling-words'),
+                        ),
+                        SizedBox(height: cardGap),
+                        _GameCard(
+                          emoji: '🫧',
+                          title: 'Word Bubbles',
+                          description:
+                              'Pop the floating bubbles by typing the words!',
+                          shortcut: '2',
+                          color: const Color(0xFF26C6DA),
+                          compact: !isTall,
+                          onTap: () => context.push('/games/word-bubbles'),
+                        ),
+                        SizedBox(height: cardGap),
+                        _GameCard(
+                          emoji: '🏎️',
+                          title: 'Speed Chase',
+                          description:
+                              'Type words faster than the ghost racer!',
+                          shortcut: '3',
+                          color: const Color(0xFFE53935),
+                          compact: !isTall,
+                          onTap: () => context.push('/games/speed-chase'),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    // Header
-                    const Text('🎮', style: TextStyle(fontSize: 56)),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Typing Games',
-                      style: GoogleFonts.fredoka(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Have fun while you practice!',
-                      style: GoogleFonts.nunito(
-                        fontSize: 16,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    // ── Game cards ──
-                    _GameCard(
-                      emoji: '⬇️',
-                      title: 'Falling Words',
-                      description:
-                          'Type the words before they reach the bottom!',
-                      shortcut: '1',
-                      color: AppColors.primary,
-                      onTap: () => context.push('/games/falling-words'),
-                    ),
-                    const SizedBox(height: 14),
-                    // Placeholder – coming soon
-                    _ComingSoonCard(emoji: '🫧', title: 'Word Bubbles'),
-                    const SizedBox(height: 14),
-                    _ComingSoonCard(emoji: '🏎️', title: 'Speed Chase'),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -127,6 +172,7 @@ class _GameCard extends StatelessWidget {
   final String description;
   final String shortcut;
   final Color color;
+  final bool compact;
   final VoidCallback onTap;
 
   const _GameCard({
@@ -135,11 +181,17 @@ class _GameCard extends StatelessWidget {
     required this.description,
     required this.shortcut,
     required this.color,
+    this.compact = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final pad = compact ? 14.0 : 20.0;
+    final emojiSize = compact ? 32.0 : 40.0;
+    final titleSize = compact ? 18.0 : 22.0;
+    final descSize = compact ? 12.0 : 14.0;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -147,7 +199,7 @@ class _GameCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(pad),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -162,8 +214,8 @@ class _GameCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 40)),
-              const SizedBox(width: 16),
+              Text(emoji, style: TextStyle(fontSize: emojiSize)),
+              SizedBox(width: compact ? 10 : 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,7 +223,7 @@ class _GameCard extends StatelessWidget {
                     Text(
                       title,
                       style: GoogleFonts.fredoka(
-                        fontSize: 22,
+                        fontSize: titleSize,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
                       ),
@@ -180,7 +232,7 @@ class _GameCard extends StatelessWidget {
                     Text(
                       description,
                       style: GoogleFonts.nunito(
-                        fontSize: 14,
+                        fontSize: descSize,
                         color: AppColors.textSecondary,
                       ),
                     ),
@@ -193,58 +245,6 @@ class _GameCard extends StatelessWidget {
               Icon(Icons.arrow_forward_ios_rounded, size: 18, color: color),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ComingSoonCard extends StatelessWidget {
-  final String emoji;
-  final String title;
-
-  const _ComingSoonCard({required this.emoji, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 0.5,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade300),
-        ),
-        child: Row(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 36)),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.fredoka(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    'Coming soon!',
-                    style: GoogleFonts.nunito(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.lock_rounded, color: Colors.grey.shade400, size: 22),
-          ],
         ),
       ),
     );

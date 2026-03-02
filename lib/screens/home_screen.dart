@@ -40,6 +40,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _openGames();
     } else if (key == LogicalKeyboardKey.keyF) {
       _openSandbox();
+    } else if (key == LogicalKeyboardKey.keyT) {
+      _openTypingTest();
     }
   }
 
@@ -67,6 +69,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openSandbox() {
     context.push('/sandbox');
+  }
+
+  void _openTypingTest() {
+    context.push('/test');
   }
 
   @override
@@ -346,6 +352,15 @@ class _HomeScreenState extends State<HomeScreen> {
           shortcut: 'F',
           color: AppColors.secondary,
           onTap: () => _openSandbox(),
+        ),
+        const SizedBox(height: 10),
+        _ActivityCard(
+          emoji: '⏱️',
+          title: 'Typing Test',
+          subtitle: 'Test your speed with a time limit',
+          shortcut: 'T',
+          color: AppColors.primary,
+          onTap: () => _openTypingTest(),
         ),
       ],
     );

@@ -7,12 +7,15 @@ import '../../models/typing_stats.dart';
 import '../../providers/profile_provider.dart';
 import '../../screens/games/falling_words_screen.dart';
 import '../../screens/games/game_menu_screen.dart';
+import '../../screens/games/speed_chase_screen.dart';
+import '../../screens/games/word_bubbles_screen.dart';
 import '../../screens/home_screen.dart';
 import '../../screens/lesson_list_screen.dart';
 import '../../screens/profile_screen.dart';
 import '../../screens/results_screen.dart';
 import '../../screens/sandbox/sandbox_screen.dart';
 import '../../screens/settings_screen.dart';
+import '../../screens/test/typing_test_screen.dart';
 import '../../screens/typing_screen.dart';
 
 /// Centralized router configuration using go_router.
@@ -26,6 +29,7 @@ import '../../screens/typing_screen.dart';
 ///   /games                   → Game menu
 ///   /games/falling-words      → Falling words game
 ///   /sandbox                  → Free practice sandbox
+///   /test                     → Typing test
 ///   /settings                  → Settings
 class AppRouter {
   AppRouter._();
@@ -118,12 +122,29 @@ class AppRouter {
             parentNavigatorKey: _rootNavigatorKey,
             builder: (context, state) => const FallingWordsScreen(),
           ),
+          GoRoute(
+            path: 'word-bubbles',
+            name: 'word-bubbles',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const WordBubblesScreen(),
+          ),
+          GoRoute(
+            path: 'speed-chase',
+            name: 'speed-chase',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const SpeedChaseScreen(),
+          ),
         ],
       ),
       GoRoute(
         path: '/sandbox',
         name: 'sandbox',
         builder: (context, state) => const SandboxScreen(),
+      ),
+      GoRoute(
+        path: '/test',
+        name: 'typing-test',
+        builder: (context, state) => const TypingTestScreen(),
       ),
     ],
     errorBuilder: (context, state) => const HomeScreen(),

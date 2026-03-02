@@ -1,1040 +1,877 @@
 import '../models/lesson.dart';
 
-/// Expanded curriculum tuned for younger learners:
-/// - Short, playful exercises
-/// - Gradual key introduction
-/// - Clear beginner -> intermediate -> advanced progression
+/// Expanded curriculum inspired by kid-first progressions (e.g., Jungle Junior):
+/// - Lots of short lessons
+/// - Repeated "finger gym", "mix", "practice", and "play" style drills
+/// - Clear beginner -> intermediate -> advanced coverage
 class ComprehensiveLessonCurriculum {
   ComprehensiveLessonCurriculum._();
 
-  static const List<Lesson> allLessons = [
-    // ============================================================
-    // HOME ROW
-    // ============================================================
-    Lesson(
-      id: 'neo-hr-01',
-      title: 'Start with F and J',
-      description: 'Find the bumps and wake up your pointer fingers.',
-      category: LessonCategory.homeRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 1,
-      focusKeys: ['f', 'j', ' '],
-      emoji: '👆',
-      funTip: 'Rest on F and J, then tap space with your thumb.',
-      exercises: [
-        'fff jjj fff jjj',
-        'fj fj fj fj fj',
-        'f j f j f j',
-        'ff jj ff jj',
-        'fjf jfj fjf',
-      ],
-    ),
-    Lesson(
-      id: 'neo-hr-02',
-      title: 'Add D and K',
-      description: 'Middle fingers join your typing team.',
-      category: LessonCategory.homeRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 2,
-      focusKeys: ['d', 'k'],
-      emoji: '✌️',
-      funTip: 'Keep returning to home row after each reach.',
-      exercises: [
-        'ddd kkk ddd kkk',
-        'dk dk dk dk',
-        'fdk jkd fdk',
-        'dd kk dd kk',
-        'fd jk fd jk',
-      ],
-    ),
-    Lesson(
-      id: 'neo-hr-03',
-      title: 'S and L Time',
-      description: 'Ring fingers take a turn.',
-      category: LessonCategory.homeRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 3,
-      focusKeys: ['s', 'l'],
-      emoji: '💍',
-      funTip: 'Ring fingers move less, so go slow and smooth.',
-      exercises: [
-        'sss lll sss lll',
-        'sl sl sl sl',
-        'sls lsl sls',
-        'fds jkl fds',
-        'ss ll ss ll',
-      ],
-    ),
-    Lesson(
-      id: 'neo-hr-04',
-      title: 'A and Semicolon',
-      description: 'Pinkies complete home row.',
-      category: LessonCategory.homeRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 4,
-      focusKeys: ['a', ';'],
-      emoji: '🤙',
-      funTip: 'Small fingers are strong when they stay relaxed.',
-      exercises: [
-        'aaa ;;; aaa ;;;',
-        'a; a; a; a;',
-        'asdf jkl; asdf',
-        'aa ;; aa ;;',
-        'a s d f j k l ;',
-      ],
-    ),
-    Lesson(
-      id: 'neo-hr-05',
-      title: 'Meet G and H',
-      description: 'Reach inward with both index fingers.',
-      category: LessonCategory.homeRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 5,
-      focusKeys: ['g', 'h'],
-      emoji: '🤲',
-      funTip: 'Tap G and H, then fly back to F and J.',
-      exercises: [
-        'ggg hhh ggg hhh',
-        'gh gh gh gh',
-        'fgh hjf fgh',
-        'g h g h g h',
-        'had glad hash',
-      ],
-    ),
-    Lesson(
-      id: 'neo-hr-06',
-      title: 'Home Row Mix 1',
-      description: 'Blend all home row letters together.',
-      category: LessonCategory.homeRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 6,
-      focusKeys: ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', ' '],
-      emoji: '🏠',
-      funTip: 'Smooth beats fast. Keep a gentle rhythm.',
-      exercises: [
-        'asdf jkl; asdf jkl;',
-        'fdsa ;lkj fdsa',
-        'saga lash glad',
-        'a sad lad had',
-        'flash dash half',
-      ],
-    ),
-    Lesson(
-      id: 'neo-hr-07',
-      title: 'Home Row Words',
-      description: 'Type short real words from home row letters.',
-      category: LessonCategory.homeRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 7,
-      focusKeys: ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
-      emoji: '📝',
-      funTip: 'Say each word softly while typing it.',
-      exercises: [
-        'dad had sad',
-        'all fall hall',
-        'glass flag',
-        'ask dash',
-        'a lad has salad',
-      ],
-    ),
-    Lesson(
-      id: 'neo-hr-08',
-      title: 'Home Row Words 2',
-      description: 'Longer home row word patterns.',
-      category: LessonCategory.homeRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 8,
-      focusKeys: ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';'],
-      emoji: '📚',
-      funTip: 'Try to keep your wrists still and fingers light.',
-      exercises: [
-        'a flask has salad',
-        'glad lads dash',
-        'half a glass',
-        'jagged flags',
-        'a small hall has shade',
-      ],
-    ),
-    Lesson(
-      id: 'neo-hr-09',
-      title: 'Home Row Checkpoint',
-      description: 'Short review before row reaches.',
-      category: LessonCategory.homeRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 9,
-      focusKeys: ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', ' '],
-      emoji: '✅',
-      funTip: 'Accuracy first, speed second.',
-      exercises: [
-        'asdfg hjkl; asdfg',
-        'all glad kids ask',
-        'dad has a flag',
-        'a lad shall dash',
-        'flash glass half',
-      ],
-    ),
+  static final List<Lesson> allLessons = _buildLessons();
 
-    // ============================================================
-    // TOP ROW
-    // ============================================================
-    Lesson(
-      id: 'neo-tr-01',
-      title: 'Reach to E and I',
-      description: 'Middle fingers go up and back.',
-      category: LessonCategory.topRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 10,
-      focusKeys: ['e', 'i'],
-      emoji: '⬆️',
-      funTip: 'Lift only the finger you need.',
-      exercises: [
-        'eee iii eee iii',
-        'de ki de ki',
-        'did lid hide',
-        'like side',
-        'he is here',
-      ],
-    ),
-    Lesson(
-      id: 'neo-tr-02',
-      title: 'Reach to R and U',
-      description: 'Pointer fingers visit R and U.',
-      category: LessonCategory.topRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 11,
-      focusKeys: ['r', 'u'],
-      emoji: '🦊',
-      funTip: 'Quick up, quick home.',
-      exercises: [
-        'rrr uuu rrr uuu',
-        'fr ju fr ju',
-        'fur run true',
-        'rude sure',
-        'a red rug',
-      ],
-    ),
-    Lesson(
-      id: 'neo-tr-03',
-      title: 'T and Y Stretch',
-      description: 'Index fingers stretch inward on the top row.',
-      category: LessonCategory.topRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 12,
-      focusKeys: ['t', 'y'],
-      emoji: '🎯',
-      funTip: 'Return to F and J after each tap.',
-      exercises: [
-        'ttt yyy ttt yyy',
-        'ft jy ft jy',
-        'toy try tidy',
-        'they yet',
-        'the tiny toy',
-      ],
-    ),
-    Lesson(
-      id: 'neo-tr-04',
-      title: 'W and O',
-      description: 'Ring fingers travel to the top row.',
-      category: LessonCategory.topRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 13,
-      focusKeys: ['w', 'o'],
-      emoji: '🦉',
-      funTip: 'Ring fingers move slowly and carefully.',
-      exercises: [
-        'www ooo www ooo',
-        'sw lo sw lo',
-        'wow low wool',
-        'owl row',
-        'we look out',
-      ],
-    ),
-    Lesson(
-      id: 'neo-tr-05',
-      title: 'Q and P',
-      description: 'Top corners with pinky control.',
-      category: LessonCategory.topRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 14,
-      focusKeys: ['q', 'p'],
-      emoji: '🐧',
-      funTip: 'Let your pinkies tap, not slam.',
-      exercises: [
-        'qqq ppp qqq ppp',
-        'aq ;p aq ;p',
-        'quip pop',
-        'quick pup',
-        'a quiet pup',
-      ],
-    ),
-    Lesson(
-      id: 'neo-tr-06',
-      title: 'Top Row Mix 1',
-      description: 'Use all top row letters with home row support.',
-      category: LessonCategory.topRow,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 15,
-      focusKeys: ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-      emoji: '🌟',
-      funTip: 'Eyes on text, not on keys.',
-      exercises: [
-        'qwerty uiop qwerty',
-        'we are quite ready',
-        'your pet is quiet',
-        'two red puppies',
-        'the white owl',
-      ],
-    ),
-    Lesson(
-      id: 'neo-tr-07',
-      title: 'Top + Home Words',
-      description: 'Common words using top and home row keys.',
-      category: LessonCategory.topRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 16,
-      focusKeys: [
-        'q',
-        'w',
-        'e',
-        'r',
-        't',
-        'y',
-        'u',
-        'i',
-        'o',
-        'p',
-        'a',
-        's',
-        'd',
-        'f',
-        'g',
-        'h',
-        'j',
-        'k',
-        'l',
-        ';',
-      ],
-      emoji: '📖',
-      funTip: 'Keep a steady beat and breathe.',
-      exercises: [
-        'we are ready today',
-        'quiet kids read',
-        'your dad is proud',
-        'a short story',
-        'the red robot is here',
-      ],
-    ),
-    Lesson(
-      id: 'neo-tr-08',
-      title: 'Sight Words Top Row',
-      description: 'Fast tiny words for fluent typing.',
-      category: LessonCategory.topRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 17,
-      focusKeys: ['e', 'r', 't', 'y', 'u', 'i', 'o'],
-      emoji: '⚡',
-      funTip: 'Tiny words are perfect for rhythm drills.',
-      exercises: [
-        'we you are our',
-        'to it is in',
-        'your you your you',
-        'we are in it',
-        'our toy is here',
-      ],
-    ),
-    Lesson(
-      id: 'neo-tr-09',
-      title: 'Top Row Challenge',
-      description: 'Checkpoint with short phrases.',
-      category: LessonCategory.topRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 18,
-      focusKeys: ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-      emoji: '🏁',
-      funTip: 'If you miss, stay calm and keep moving.',
-      exercises: [
-        'type your quiet report',
-        'we write true stories',
-        'our puppy wore a bow',
-        'the pirate wrote poetry',
-        'you are ready to type',
-      ],
-    ),
+  static List<Lesson> _buildLessons() {
+    final lessons = <Lesson>[];
+    var order = 1;
 
-    // ============================================================
-    // BOTTOM ROW
-    // ============================================================
-    Lesson(
-      id: 'neo-br-01',
-      title: 'C and M',
-      description: 'Dip down for C and M.',
-      category: LessonCategory.bottomRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 19,
-      focusKeys: ['c', 'm'],
-      emoji: '⬇️',
-      funTip: 'Tap down, then return to home row.',
-      exercises: [
-        'ccc mmm ccc mmm',
-        'dc jm dc jm',
-        'came calm',
-        'comic music',
-        'my cat came',
-      ],
-    ),
-    Lesson(
-      id: 'neo-br-02',
-      title: 'V and N',
-      description: 'Index fingers visit V and N.',
-      category: LessonCategory.bottomRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 20,
-      focusKeys: ['v', 'n'],
-      emoji: '🎵',
-      funTip: 'Keep each reach small and gentle.',
-      exercises: [
-        'vvv nnn vvv nnn',
-        'fv jn fv jn',
-        'van vine',
-        'even seven',
-        'new van',
-      ],
-    ),
-    Lesson(
-      id: 'neo-br-03',
-      title: 'X and Period',
-      description: 'Ring fingers reach down for x and period.',
-      category: LessonCategory.bottomRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 21,
-      focusKeys: ['x', '.'],
-      emoji: '📌',
-      funTip: 'Period ends the line, then reset.',
-      exercises: [
-        'xxx ... xxx ...',
-        'sx l. sx l.',
-        'mix. six. fix.',
-        'next. text.',
-        'a fox. a box.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-br-04',
-      title: 'Z and Slash',
-      description: 'Pinkies stretch to the corners.',
-      category: LessonCategory.bottomRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 22,
-      focusKeys: ['z', '/'],
-      emoji: '⚡',
-      funTip: 'Pinky keys need patience.',
-      exercises: [
-        'zzz /// zzz ///',
-        'az ;/ az ;/',
-        'zig zag / zig',
-        'zoo / maze',
-        'buzz / jazz',
-      ],
-    ),
-    Lesson(
-      id: 'neo-br-05',
-      title: 'B and Comma',
-      description: 'Last bottom row pair joins.',
-      category: LessonCategory.bottomRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 23,
-      focusKeys: ['b', ','],
-      emoji: '🐝',
-      funTip: 'Comma is a quick tap, then continue.',
-      exercises: [
-        'bbb ,,, bbb ,,,',
-        'fb k, fb k,',
-        'bob, ben, bill,',
-        'big, blue, ball,',
-        'bees buzz,',
-      ],
-    ),
-    Lesson(
-      id: 'neo-br-06',
-      title: 'Bottom Row Mix 1',
-      description: 'Practice the full bottom row.',
-      category: LessonCategory.bottomRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 24,
-      focusKeys: ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'],
-      emoji: '🏆',
-      funTip: 'Move only fingers, not your whole hand.',
-      exercises: [
-        'zxcv bnm, zxcv',
-        'mix, move, zoom.',
-        'a brave fox,',
-        'we can zoom in.',
-        'vexing buzz, calm mind.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-br-07',
-      title: 'Punctuation Buddies',
-      description: 'Commas, periods, and slashes in short lines.',
-      category: LessonCategory.bottomRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 25,
-      focusKeys: [',', '.', '/'],
-      emoji: '🧩',
-      funTip: 'Punctuation helps your words breathe.',
-      exercises: [
-        'run, jump, spin.',
-        'mix, stir, bake.',
-        'up/down up/down',
-        'left/right left/right',
-        'one, two, three.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-br-08',
-      title: 'Alphabet Flow',
-      description: 'Blend top, home, and bottom rows.',
-      category: LessonCategory.bottomRow,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 26,
-      focusKeys: [],
-      emoji: '🌊',
-      funTip: 'Stay relaxed when rows switch.',
-      exercises: [
-        'quick brown fox',
-        'tiny birds move',
-        'kids write stories.',
-        'we camp by river.',
-        'jump, duck, dive.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-br-09',
-      title: 'Bottom Row Challenge',
-      description: 'Speed and control with mixed punctuation.',
-      category: LessonCategory.bottomRow,
-      difficulty: LessonDifficulty.advanced,
-      orderIndex: 27,
-      focusKeys: ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'],
-      emoji: '🚀',
-      funTip: 'Aim for clean lines with no rushing.',
-      exercises: [
-        'zoom, zoom, zip.',
-        'mix six vivid boxes.',
-        'my brave cat jumps.',
-        'vines bend in wind.',
-        'zebras zig/zag fast.',
-      ],
-    ),
+    void addLesson({
+      required String title,
+      required String description,
+      required LessonCategory category,
+      required LessonDifficulty difficulty,
+      required List<String> focusKeys,
+      required List<String> exercises,
+      required String emoji,
+      required String funTip,
+    }) {
+      lessons.add(
+        Lesson(
+          id: 'neo-${order.toString().padLeft(3, '0')}',
+          title: title,
+          description: description,
+          category: category,
+          difficulty: difficulty,
+          orderIndex: order,
+          focusKeys: focusKeys,
+          exercises: exercises,
+          emoji: emoji,
+          funTip: funTip,
+        ),
+      );
+      order++;
+    }
 
-    // ============================================================
-    // COMMON WORDS
-    // ============================================================
-    Lesson(
-      id: 'neo-cw-01',
-      title: 'Sight Words 1',
-      description: 'Most-used tiny words.',
-      category: LessonCategory.commonWords,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 28,
-      focusKeys: [],
-      emoji: '🧠',
-      funTip: 'Small words appear everywhere.',
-      exercises: [
-        'the and to',
-        'is it in',
-        'we you are',
-        'can not for',
-        'on at up',
-      ],
-    ),
-    Lesson(
-      id: 'neo-cw-02',
-      title: 'Sight Words 2',
-      description: 'More tiny words for fluent typing.',
-      category: LessonCategory.commonWords,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 29,
-      focusKeys: [],
-      emoji: '🧩',
-      funTip: 'Read first, then type smooth.',
-      exercises: [
-        'this that with',
-        'from have your',
-        'was were when',
-        'how what who',
-        'them then than',
-      ],
-    ),
-    Lesson(
-      id: 'neo-cw-03',
-      title: 'Word Families',
-      description: 'Easy patterns: at, an, it, op.',
-      category: LessonCategory.commonWords,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 30,
-      focusKeys: [],
-      emoji: '🔤',
-      funTip: 'Patterns help fingers remember.',
-      exercises: [
-        'cat bat hat',
-        'can fan man',
-        'sit hit fit',
-        'hop mop top',
-        'red bed fed',
-      ],
-    ),
-    Lesson(
-      id: 'neo-cw-04',
-      title: 'Colors and Shapes',
-      description: 'Friendly school words.',
-      category: LessonCategory.commonWords,
-      difficulty: LessonDifficulty.beginner,
-      orderIndex: 31,
-      focusKeys: [],
-      emoji: '🎨',
-      funTip: 'Picture each word as you type.',
-      exercises: [
-        'red blue green',
-        'black white gray',
-        'circle square star',
-        'small big long',
-        'round shape',
-      ],
-    ),
-    Lesson(
-      id: 'neo-cw-05',
-      title: 'Animal Team',
-      description: 'Kid-favorite animal words.',
-      category: LessonCategory.commonWords,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 32,
-      focusKeys: [],
-      emoji: '🦁',
-      funTip: 'Keep each word clean and even.',
-      exercises: [
-        'cat dog fish',
-        'lion tiger bear',
-        'zebra monkey panda',
-        'owl duck swan',
-        'rabbit fox wolf',
-      ],
-    ),
-    Lesson(
-      id: 'neo-cw-06',
-      title: 'School Day Words',
-      description: 'Type words from class time.',
-      category: LessonCategory.commonWords,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 33,
-      focusKeys: [],
-      emoji: '🏫',
-      funTip: 'Imagine your classroom while typing.',
-      exercises: [
-        'class desk board',
-        'book paper pencil',
-        'teacher student team',
-        'read write count',
-        'music science art',
-      ],
-    ),
-    Lesson(
-      id: 'neo-cw-07',
-      title: 'Nature Words',
-      description: 'Outdoor and weather vocabulary.',
-      category: LessonCategory.commonWords,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 34,
-      focusKeys: [],
-      emoji: '🌳',
-      funTip: 'Breathe slowly and type steadily.',
-      exercises: [
-        'tree leaf seed',
-        'cloud rain wind',
-        'river stone sand',
-        'sun moon star',
-        'forest field hill',
-      ],
-    ),
-    Lesson(
-      id: 'neo-cw-08',
-      title: 'Action Words',
-      description: 'Verbs that keep fingers moving.',
-      category: LessonCategory.commonWords,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 35,
-      focusKeys: [],
-      emoji: '🏃',
-      funTip: 'Action words are great speed drills.',
-      exercises: [
-        'run jump skip',
-        'write read draw',
-        'smile laugh wave',
-        'clap spin dance',
-        'build make create',
-      ],
-    ),
-    Lesson(
-      id: 'neo-cw-09',
-      title: 'Blend Words',
-      description: 'Tricky clusters for strong control.',
-      category: LessonCategory.commonWords,
-      difficulty: LessonDifficulty.advanced,
-      orderIndex: 36,
-      focusKeys: [],
-      emoji: '🧪',
-      funTip: 'Slow down on double letters and blends.',
-      exercises: [
-        'bright stream',
-        'quickly growing',
-        'planet basket',
-        'splashing branches',
-        'crystal winter',
-      ],
-    ),
+    final alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
-    // ============================================================
-    // SENTENCES
-    // ============================================================
-    Lesson(
-      id: 'neo-sn-01',
-      title: 'Tiny Sentences',
-      description: 'Short and simple full lines.',
-      category: LessonCategory.sentences,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 37,
-      focusKeys: [],
-      emoji: '💬',
-      funTip: 'Watch spaces between words.',
-      exercises: [
-        'the cat can nap.',
-        'we play at lunch.',
-        'i read a book.',
-        'my red kite flew.',
-        'birds sing at dawn.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-sn-02',
-      title: 'Daily Routine',
-      description: 'Sentences about everyday habits.',
-      category: LessonCategory.sentences,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 38,
-      focusKeys: [],
-      emoji: '🌞',
-      funTip: 'Keep each sentence in one rhythm.',
-      exercises: [
-        'i wake up at six.',
-        'we brush and eat.',
-        'dad packs my bag.',
-        'school starts at nine.',
-        'i sleep by ten.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-sn-03',
-      title: 'Friendly Sentences',
-      description: 'Type polite and happy lines.',
-      category: LessonCategory.sentences,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 39,
-      focusKeys: [],
-      emoji: '😊',
-      funTip: 'Smile while typing kind words.',
-      exercises: [
-        'please pass the pen.',
-        'thank you for help.',
-        'we can share toys.',
-        'you are a good friend.',
-        'have a nice day.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-sn-04',
-      title: 'Story Starter',
-      description: 'Simple story lines with flow.',
-      category: LessonCategory.sentences,
-      difficulty: LessonDifficulty.advanced,
-      orderIndex: 40,
-      focusKeys: [],
-      emoji: '📖',
-      funTip: 'Read the whole line before typing.',
-      exercises: [
-        'one windy day we found a map.',
-        'the map led us past a quiet lake.',
-        'we saw a small cave by a hill.',
-        'inside we found a box of shells.',
-        'we walked home before dark.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-sn-05',
-      title: 'Silly Facts',
-      description: 'Fun lines for accuracy practice.',
-      category: LessonCategory.sentences,
-      difficulty: LessonDifficulty.advanced,
-      orderIndex: 41,
-      focusKeys: [],
-      emoji: '😄',
-      funTip: 'Laugh, then type clean.',
-      exercises: [
-        'a penguin wore my tiny hat.',
-        'our robot danced on wet grass.',
-        'five ducks raced one turtle.',
-        'a sleepy goat read comics.',
-        'my cactus likes pop music.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-sn-06',
-      title: 'Dialog Lines',
-      description: 'Short back-and-forth statements.',
-      category: LessonCategory.sentences,
-      difficulty: LessonDifficulty.advanced,
-      orderIndex: 42,
-      focusKeys: [],
-      emoji: '🗣️',
-      funTip: 'Keep punctuation sharp and neat.',
-      exercises: [
-        'we can build it.',
-        'yes, we can build it.',
-        'bring rope, nails, and wood.',
-        'great, i will bring tools.',
-        'teamwork makes jobs easy.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-sn-07',
-      title: 'Mini Paragraph',
-      description: 'Longer lines, still kid-friendly.',
-      category: LessonCategory.sentences,
-      difficulty: LessonDifficulty.advanced,
-      orderIndex: 43,
-      focusKeys: [],
-      emoji: '📚',
-      funTip: 'Do not rush the long words.',
-      exercises: [
-        'our class planted seeds in spring.',
-        'we gave each plant sun and water.',
-        'tiny green leaves came up first.',
-        'by summer, flowers filled the yard.',
-        'we felt proud of our garden.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-sn-08',
-      title: 'Rhythm Sentences',
-      description: 'Repetitive patterns for speed.',
-      category: LessonCategory.sentences,
-      difficulty: LessonDifficulty.advanced,
-      orderIndex: 44,
-      focusKeys: [],
-      emoji: '🥁',
-      funTip: 'Use a steady tap-tap pace.',
-      exercises: [
-        'we run and we jump.',
-        'we clap and we spin.',
-        'we read and we write.',
-        'we smile and we share.',
-        'we try and we grow.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-sn-09',
-      title: 'Sentence Sprint',
-      description: 'Final sentence checkpoint.',
-      category: LessonCategory.sentences,
-      difficulty: LessonDifficulty.advanced,
-      orderIndex: 45,
-      focusKeys: [],
-      emoji: '🏁',
-      funTip: 'Stay calm when the line is long.',
-      exercises: [
-        'the quick fox ran past the quiet farm.',
-        'bright stars came out over the dark hill.',
-        'we packed snacks, maps, and water bottles.',
-        'every friend helped carry gear for camp.',
-        'after sunset, we told stories by fire.',
-      ],
-    ),
+    // ------------------------------------------------------------
+    // 1) Individual letter tracks: Letter -> Type + Mix
+    // 26 letters * 2 = 52 lessons
+    // ------------------------------------------------------------
+    for (var i = 0; i < alphabet.length; i++) {
+      final letter = alphabet[i];
+      final upper = letter.toUpperCase();
+      final category = _categoryForKey(letter);
+      final learned = alphabet.sublist(0, i + 1);
 
-    // ============================================================
-    // NUMBERS
-    // ============================================================
-    Lesson(
-      id: 'neo-nm-01',
-      title: 'Numbers 1 to 5',
-      description: 'Left-side number row practice.',
+      addLesson(
+        title: upper,
+        description: 'Find and press the $upper key.',
+        category: category,
+        difficulty: LessonDifficulty.beginner,
+        focusKeys: [letter],
+        emoji: '🔤',
+        funTip: 'Use the correct finger every time for $upper.',
+        exercises: _letterIntroExercises(letter),
+      );
+
+      addLesson(
+        title: 'Type $upper + Mix',
+        description: 'Type $upper and blend it with learned keys.',
+        category: category,
+        difficulty: LessonDifficulty.beginner,
+        focusKeys: learned.length <= 4
+            ? learned
+            : learned.sublist(learned.length - 4),
+        emoji: '⌨️',
+        funTip: 'Mixing old and new keys helps your fingers remember faster.',
+        exercises: _typeAndMixExercises(letter, learned),
+      );
+    }
+
+    // ------------------------------------------------------------
+    // 2) Mix-up, play, and quest groups by alphabet chunks
+    // 9 groups * 3 = 27 lessons
+    // ------------------------------------------------------------
+    const letterGroups = <List<String>>[
+      ['a', 'b', 'c'],
+      ['d', 'e', 'f'],
+      ['g', 'h', 'i'],
+      ['j', 'k', 'l'],
+      ['m', 'n', 'o'],
+      ['p', 'q', 'r'],
+      ['s', 't', 'u'],
+      ['v', 'w', 'x'],
+      ['y', 'z'],
+    ];
+
+    for (var i = 0; i < letterGroups.length; i++) {
+      final group = letterGroups[i];
+      final label = group.map((k) => k.toUpperCase()).join(' ');
+      final category = _categoryForKeys(group);
+
+      addLesson(
+        title: '$label Mix Up!',
+        description: 'Mix these letters in short bursts.',
+        category: category,
+        difficulty: LessonDifficulty.intermediate,
+        focusKeys: group,
+        emoji: '🎯',
+        funTip: 'Stay relaxed while letters switch.',
+        exercises: _mixExercises(group),
+      );
+
+      addLesson(
+        title: 'Play: $label',
+        description: 'Fun speed round for $label.',
+        category: category,
+        difficulty: LessonDifficulty.intermediate,
+        focusKeys: group,
+        emoji: '🎮',
+        funTip: 'Accuracy first, speed second.',
+        exercises: _playExercises(group),
+      );
+
+      addLesson(
+        title: 'Quest: $label',
+        description: 'Fun mixed mission with these keys.',
+        category: category,
+        difficulty: i < 5
+            ? LessonDifficulty.intermediate
+            : LessonDifficulty.advanced,
+        focusKeys: group,
+        emoji: '🕹️',
+        funTip: 'Complete each mini mission with smooth rhythm.',
+        exercises: _groupQuestExercises(group),
+      );
+    }
+
+    // ------------------------------------------------------------
+    // 3) Alphabet range practice blocks
+    // 4 ranges * 5 = 20 lessons
+    // ------------------------------------------------------------
+    const rangeEnds = ['f', 'l', 'r', 'z'];
+
+    for (final end in rangeEnds) {
+      final endIndex = alphabet.indexOf(end) + 1;
+      final range = alphabet.sublist(0, endIndex);
+      final leftLabel = 'A to ${end.toUpperCase()}';
+      final rightLabel = '${end.toUpperCase()} to A';
+
+      addLesson(
+        title: leftLabel,
+        description: 'Forward alphabet range practice.',
+        category: LessonCategory.commonWords,
+        difficulty: LessonDifficulty.intermediate,
+        focusKeys: [],
+        emoji: '🔡',
+        funTip: 'Keep your eyes on the text, not the keys.',
+        exercises: _rangeExercises(range, reverse: false),
+      );
+
+      addLesson(
+        title: rightLabel,
+        description: 'Backward alphabet range practice.',
+        category: LessonCategory.commonWords,
+        difficulty: LessonDifficulty.intermediate,
+        focusKeys: [],
+        emoji: '🔠',
+        funTip: 'Backward runs build strong control.',
+        exercises: _rangeExercises(range, reverse: true),
+      );
+
+      addLesson(
+        title: 'Practice $leftLabel',
+        description: 'Mixed short runs in this range.',
+        category: LessonCategory.commonWords,
+        difficulty: LessonDifficulty.intermediate,
+        focusKeys: [],
+        emoji: '🧩',
+        funTip: 'Steady rhythm helps your hands remember.',
+        exercises: _rangePracticeExercises(range),
+      );
+
+      addLesson(
+        title: 'Play $leftLabel',
+        description: 'Fast mini game style drills.',
+        category: LessonCategory.commonWords,
+        difficulty: LessonDifficulty.intermediate,
+        focusKeys: [],
+        emoji: '🏁',
+        funTip: 'Try to finish each line with no mistakes.',
+        exercises: _rangePlayExercises(range),
+      );
+
+      addLesson(
+        title: 'Practice Plus $leftLabel',
+        description: 'Final checkpoint for this alphabet range.',
+        category: LessonCategory.commonWords,
+        difficulty: LessonDifficulty.intermediate,
+        focusKeys: [],
+        emoji: '✅',
+        funTip: 'Clean typing now means faster typing later.',
+        exercises: _rangeCheckpointExercises(range),
+      );
+    }
+
+    // ------------------------------------------------------------
+    // 4) Word patterns
+    // 16 lessons
+    // ------------------------------------------------------------
+    const patternFamilies = <String, List<String>>{
+      '_ad': ['bad', 'dad', 'had', 'mad', 'sad'],
+      '_at': ['cat', 'hat', 'mat', 'rat', 'sat'],
+      '_ed': ['bed', 'fed', 'red', 'wed', 'sled'],
+      '_et': ['jet', 'net', 'pet', 'wet', 'set'],
+      '_ip': ['dip', 'hip', 'lip', 'rip', 'sip'],
+      '_it': ['bit', 'fit', 'hit', 'kit', 'sit'],
+      '_op': ['cop', 'hop', 'mop', 'pop', 'top'],
+      '_ot': ['dot', 'got', 'hot', 'not', 'pot'],
+      '_ug': ['bug', 'dug', 'hug', 'mug', 'rug'],
+      '_un': ['bun', 'fun', 'run', 'sun', 'pun'],
+      '_an': ['can', 'fan', 'man', 'pan', 'van'],
+      '_ap': ['cap', 'gap', 'lap', 'map', 'tap'],
+      '_ell': ['bell', 'fell', 'sell', 'tell', 'well'],
+      '_ake': ['bake', 'cake', 'lake', 'make', 'take'],
+      '_ill': ['bill', 'fill', 'hill', 'mill', 'pill'],
+      '_ing': ['king', 'ring', 'sing', 'thing', 'wing'],
+    };
+
+    var patternIndex = 0;
+    for (final entry in patternFamilies.entries) {
+      patternIndex++;
+      addLesson(
+        title: 'Pattern ${entry.key}',
+        description: 'Practice this word family pattern.',
+        category: LessonCategory.commonWords,
+        difficulty: patternIndex <= 6
+            ? LessonDifficulty.beginner
+            : LessonDifficulty.intermediate,
+        focusKeys: [],
+        emoji: '🥁',
+        funTip: 'Patterns make typing feel easier and faster.',
+        exercises: _patternExercises(entry.value),
+      );
+    }
+
+    // ------------------------------------------------------------
+    // 5) Sight words
+    // 24 lessons
+    // ------------------------------------------------------------
+    const sightPairs = <List<String>>[
+      ['a', 'are'],
+      ['at', 'black'],
+      ['brown', 'four'],
+      ['get', 'like'],
+      ['must', 'our'],
+      ['out', 'ride'],
+      ['saw', 'that'],
+      ['there', 'was'],
+      ['after', 'by'],
+      ['could', 'going'],
+      ['had', 'just'],
+      ['know', 'put'],
+      ['once', 'round'],
+      ['some', 'them'],
+      ['well', 'white'],
+      ['who', 'yes'],
+      ['come', 'from'],
+      ['look', 'many'],
+      ['make', 'open'],
+      ['pretty', 'said'],
+      ['their', 'walk'],
+      ['water', 'where'],
+      ['little', 'people'],
+      ['sound', 'write'],
+    ];
+
+    for (final pair in sightPairs) {
+      addLesson(
+        title: 'Sight: ${_cap(pair[0])} - ${_cap(pair[1])}',
+        description: 'High-frequency word pair practice.',
+        category: LessonCategory.commonWords,
+        difficulty: LessonDifficulty.intermediate,
+        focusKeys: [],
+        emoji: '👀',
+        funTip: 'These words appear all the time in books.',
+        exercises: _sightWordExercises(pair[0], pair[1]),
+      );
+    }
+
+    // ------------------------------------------------------------
+    // 6) Phrases
+    // 12 lessons
+    // ------------------------------------------------------------
+    const phraseThemes = <String>[
+      'water',
+      'write',
+      'people',
+      'more',
+      'day',
+      'air',
+      'river',
+      'sound',
+      'little',
+      'after',
+      'animals',
+      'think',
+    ];
+
+    for (final theme in phraseThemes) {
+      addLesson(
+        title: 'Phrase: ${_cap(theme)}',
+        description: 'Short phrase typing around "$theme".',
+        category: LessonCategory.commonWords,
+        difficulty: LessonDifficulty.intermediate,
+        focusKeys: [],
+        emoji: '📝',
+        funTip: 'Short phrases build smooth sentence flow.',
+        exercises: _phraseExercises(theme),
+      );
+    }
+
+    // ------------------------------------------------------------
+    // 7) Sentence sets
+    // 12 lessons (5 sentences each)
+    // ------------------------------------------------------------
+    const sentenceBank = <String>[
+      'the dog ran to the park.',
+      'my cat likes warm milk.',
+      'we read books after lunch.',
+      'i can help my friend today.',
+      'the sun is bright and warm.',
+      'our class will plant a tree.',
+      'birds sing near the window.',
+      'mom and dad made soup.',
+      'we play games on friday.',
+      'the frog jumped in the pond.',
+      'a red kite flew very high.',
+      'my pencil is on the desk.',
+      'we count stars at night.',
+      'the rabbit hides in grass.',
+      'our team won the game.',
+      'i drink water after sports.',
+      'the bus stops near school.',
+      'a big cloud covered the sky.',
+      'we draw maps in class.',
+      'my shoes are under the bed.',
+      'the robot can wave hello.',
+      'please close the blue door.',
+      'the fish swims very fast.',
+      'we clap when songs begin.',
+      'i packed snacks for the trip.',
+      'our teacher reads a story.',
+      'a fox ran past the farm.',
+      'the wind moved the leaves.',
+      'we clean up after art time.',
+      'my brother rides his bike.',
+      'the baby bird wants food.',
+      'we line up by the gate.',
+      'a tall tree shades the path.',
+      'my friend found a shell.',
+      'the rain stopped by noon.',
+      'we share crayons and paper.',
+      'the turtle crossed the road.',
+      'i wrote my name neatly.',
+      'our class sang with joy.',
+      'the moon looked very bright.',
+      'we built towers with blocks.',
+      'dad fixed the broken toy.',
+      'a bee buzzed near flowers.',
+      'my lunch had rice and fruit.',
+      'we watched clouds drift slowly.',
+      'the puppy slept on a rug.',
+      'i waved to my neighbor.',
+      'our garden grew green beans.',
+      'the bell rang at three.',
+      'we packed bags for camp.',
+      'a small boat crossed the lake.',
+      'my sister made a card.',
+      'we write in quiet time.',
+      'the painter mixed bright colors.',
+      'our team solved the puzzle.',
+      'i can type with calm hands.',
+      'the class cheered for all.',
+      'we ended with a smile.',
+      'today i practiced every key.',
+      'great work, keep going.',
+    ];
+
+    for (var i = 0; i < 12; i++) {
+      final start = i * 5;
+      final chunk = sentenceBank.sublist(start, start + 5);
+      addLesson(
+        title: 'Sentence Set ${i + 1}',
+        description: 'Short full sentences for fluency.',
+        category: LessonCategory.sentences,
+        difficulty: i < 4
+            ? LessonDifficulty.intermediate
+            : LessonDifficulty.advanced,
+        focusKeys: [],
+        emoji: '💬',
+        funTip: 'Keep moving forward even after a small mistake.',
+        exercises: chunk,
+      );
+    }
+
+    // ------------------------------------------------------------
+    // 7b) Overall mixed review lessons
+    // 12 lessons
+    // ------------------------------------------------------------
+    const overallReviewTopics = <String>[
+      'dog',
+      'cat',
+      'school',
+      'good day',
+      'people',
+      'top',
+      'give',
+      'name',
+      'mom and dad',
+      'friends',
+      'help',
+      'line',
+    ];
+
+    for (var i = 0; i < overallReviewTopics.length; i++) {
+      final topic = overallReviewTopics[i];
+      addLesson(
+        title: 'Review: ${_capWords(topic)}',
+        description: 'Mixed review with words and short sentences.',
+        category: LessonCategory.sentences,
+        difficulty: i < 8
+            ? LessonDifficulty.intermediate
+            : LessonDifficulty.advanced,
+        focusKeys: [],
+        emoji: '🎉',
+        funTip: 'These review sets mix old and new skills together.',
+        exercises: _overallReviewExercises(topic),
+      );
+    }
+
+    // ------------------------------------------------------------
+    // 8) Punctuation + numbers
+    // 12 lessons
+    // ------------------------------------------------------------
+    addLesson(
+      title: 'Period',
+      description: 'Practice lines that end with a period.',
       category: LessonCategory.numbers,
       difficulty: LessonDifficulty.intermediate,
-      orderIndex: 46,
+      focusKeys: ['.'],
+      emoji: '🟣',
+      funTip: 'Period means stop, then reset.',
+      exercises: const [
+        'dot. dot. dot.',
+        'stop. go. stop.',
+        'i can type this.',
+        'we are done.',
+        'good job.',
+      ],
+    );
+
+    addLesson(
+      title: 'Comma',
+      description: 'Use commas in short lists.',
+      category: LessonCategory.numbers,
+      difficulty: LessonDifficulty.intermediate,
+      focusKeys: [','],
+      emoji: '🟠',
+      funTip: 'Comma is a tiny pause in a sentence.',
+      exercises: const [
+        'red, blue, green,',
+        'cat, dog, fish,',
+        'run, jump, clap,',
+        'one, two, three,',
+        'eat, drink, smile,',
+      ],
+    );
+
+    addLesson(
+      title: 'Slash',
+      description: 'Practice the slash key in pairs.',
+      category: LessonCategory.numbers,
+      difficulty: LessonDifficulty.intermediate,
+      focusKeys: ['/'],
+      emoji: '➗',
+      funTip: 'Slash is quick, then back home.',
+      exercises: const [
+        'up/down up/down',
+        'left/right left/right',
+        'in/out in/out',
+        'on/off on/off',
+        'yes/no yes/no',
+      ],
+    );
+
+    addLesson(
+      title: 'Dash and Equals',
+      description: 'Top row symbol practice.',
+      category: LessonCategory.numbers,
+      difficulty: LessonDifficulty.intermediate,
+      focusKeys: ['-', '='],
+      emoji: '➖',
+      funTip: 'Right pinky leads these keys.',
+      exercises: const ['1-1=0', '2-1=1', '3-1=2', '6-2=4', '9-4=5'],
+    );
+
+    addLesson(
+      title: 'Numbers 1 to 5',
+      description: 'Left side number row.',
+      category: LessonCategory.numbers,
+      difficulty: LessonDifficulty.intermediate,
       focusKeys: ['1', '2', '3', '4', '5'],
       emoji: '1️⃣',
-      funTip: 'Keep fingers curved when reaching up.',
-      exercises: [
+      funTip: 'Reach up and return to home row.',
+      exercises: const [
         '1 2 3 4 5',
         '11 22 33 44 55',
         '12 23 34 45',
         '123 234 345',
         '5 4 3 2 1',
       ],
-    ),
-    Lesson(
-      id: 'neo-nm-02',
+    );
+
+    addLesson(
       title: 'Numbers 6 to 0',
-      description: 'Right-side number row practice.',
+      description: 'Right side number row.',
       category: LessonCategory.numbers,
       difficulty: LessonDifficulty.intermediate,
-      orderIndex: 47,
       focusKeys: ['6', '7', '8', '9', '0'],
       emoji: '🔢',
-      funTip: 'Reach, tap, return home.',
-      exercises: [
+      funTip: 'Stay relaxed while reaching.',
+      exercises: const [
         '6 7 8 9 0',
         '66 77 88 99 00',
         '67 78 89 90',
         '678 789 890',
         '0 9 8 7 6',
       ],
-    ),
-    Lesson(
-      id: 'neo-nm-03',
-      title: 'Number Mix',
-      description: 'All digits in short patterns.',
+    );
+
+    addLesson(
+      title: 'All Numbers Mix',
+      description: 'Combine all digits in short bursts.',
       category: LessonCategory.numbers,
-      difficulty: LessonDifficulty.intermediate,
-      orderIndex: 48,
+      difficulty: LessonDifficulty.advanced,
       focusKeys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
       emoji: '🎲',
-      funTip: 'Keep eyes ahead on the next group.',
-      exercises: [
+      funTip: 'Consistency beats rushing.',
+      exercises: const [
         '123 456 789 0',
         '246 135 790',
-        '102 304 506',
         '987 654 321',
+        '102 304 506',
         '12345 67890',
       ],
-    ),
-    Lesson(
-      id: 'neo-nm-04',
-      title: 'Numbers in Words',
-      description: 'Tiny phrases with digits.',
+    );
+
+    addLesson(
+      title: 'Dates',
+      description: 'Numbers with slash date patterns.',
       category: LessonCategory.numbers,
       difficulty: LessonDifficulty.advanced,
-      orderIndex: 49,
-      focusKeys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ' '],
-      emoji: '🧮',
-      funTip: 'Treat spaces like any other key.',
-      exercises: [
-        'i have 2 cats.',
-        'we read 5 books.',
-        'my team won 3 games.',
-        'class starts at 8.',
-        'the bus leaves at 7.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-nm-05',
-      title: 'Commas and Periods',
-      description: 'Punctuation with numbers.',
-      category: LessonCategory.numbers,
-      difficulty: LessonDifficulty.advanced,
-      orderIndex: 50,
-      focusKeys: [',', '.', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
-      emoji: '📊',
-      funTip: 'Comma separates, period ends.',
-      exercises: [
-        '1, 2, 3, 4.',
-        '10, 20, 30.',
-        '7, 8, 9, 0.',
-        '2.5 3.5 4.5',
-        '6, 5, 4, 3.',
-      ],
-    ),
-    Lesson(
-      id: 'neo-nm-06',
-      title: 'Slash and Dates',
-      description: 'Practice slash in useful patterns.',
-      category: LessonCategory.numbers,
-      difficulty: LessonDifficulty.advanced,
-      orderIndex: 51,
-      focusKeys: ['/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+      focusKeys: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '/'],
       emoji: '📅',
-      funTip: 'Keep slash quick and light.',
-      exercises: [
+      funTip: 'Keep each date clean and even.',
+      exercises: const [
         '01/02 03/04',
         '05/06 07/08',
         '09/10 11/12',
-        '2/3 4/5 6/7',
         '12/25 01/01',
+        '2026/03/02',
       ],
-    ),
-    Lesson(
-      id: 'neo-nm-07',
-      title: 'Data Entry Mini',
-      description: 'Short table-like entries.',
+    );
+
+    addLesson(
+      title: 'Scores',
+      description: 'Type score-like numeric lines.',
       category: LessonCategory.numbers,
       difficulty: LessonDifficulty.advanced,
-      orderIndex: 52,
+      focusKeys: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', '.'],
+      emoji: '🏅',
+      funTip: 'Short pauses help maintain accuracy.',
+      exercises: const [
+        'team a 9.5',
+        'team b 8.7',
+        'round 1 10.0',
+        'round 2 9.2',
+        'final 19.2',
+      ],
+    );
+
+    addLesson(
+      title: 'Data Entry 1',
+      description: 'Simple data style typing lines.',
+      category: LessonCategory.numbers,
+      difficulty: LessonDifficulty.advanced,
       focusKeys: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '.'],
       emoji: '📋',
-      funTip: 'Consistency is the goal.',
-      exercises: [
-        'id 01 score 98.',
-        'id 02 score 87.',
-        'id 03 score 90.',
-        'id 04 score 76.',
-        'id 05 score 99.',
+      funTip: 'Keep a steady, repeatable speed.',
+      exercises: const [
+        'id 01, score 98.',
+        'id 02, score 87.',
+        'id 03, score 90.',
+        'id 04, score 76.',
+        'id 05, score 99.',
       ],
-    ),
-    Lesson(
-      id: 'neo-nm-08',
-      title: 'Dash and Equals',
-      description: 'Top-row symbols without shift.',
+    );
+
+    addLesson(
+      title: 'Data Entry 2',
+      description: 'More short numeric records.',
       category: LessonCategory.numbers,
       difficulty: LessonDifficulty.advanced,
-      orderIndex: 53,
-      focusKeys: ['-', '=', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
-      emoji: '➖',
-      funTip: 'Right pinky does important work here.',
-      exercises: ['1-1=0', '2-1=1', '3-1=2', '9-4=5', '8-3=5'],
-    ),
-    Lesson(
-      id: 'neo-nm-09',
-      title: 'Number Challenge',
-      description: 'Final mixed numbers and punctuation review.',
+      focusKeys: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '='],
+      emoji: '📊',
+      funTip: 'Aim for smooth key transitions.',
+      exercises: const [
+        'set-1=245',
+        'set-2=389',
+        'set-3=410',
+        'set-4=276',
+        'set-5=333',
+      ],
+    );
+
+    addLesson(
+      title: 'Final Challenge',
+      description: 'Mixed punctuation, words, and numbers.',
       category: LessonCategory.numbers,
       difficulty: LessonDifficulty.advanced,
-      orderIndex: 54,
-      focusKeys: [
-        '0',
-        '1',
-        '2',
-        '3',
-        '4',
-        '5',
-        '6',
-        '7',
-        '8',
-        '9',
-        ',',
-        '.',
-        '/',
-        '-',
-        '=',
+      focusKeys: [],
+      emoji: '🏆',
+      funTip: 'Finish strong with calm, accurate typing.',
+      exercises: const [
+        'today is 2026/03/02.',
+        'we scored 9.4, then 9.8.',
+        'level-4=pass.',
+        'pack 2 maps, 3 pens, 1 bag.',
+        'great job. keep typing.',
       ],
-      emoji: '🏅',
-      funTip: 'Focus on clean key presses to finish strong.',
-      exercises: [
-        '12/24 score 9.5',
-        '7-2=5 and 8-3=5',
-        '1, 3, 5, 7, 9.',
-        '2026/03/02',
-        'level 4, stage 2.',
-      ],
-    ),
-  ];
+    );
+
+    return lessons;
+  }
+
+  static const Set<String> _topRow = {
+    'q',
+    'w',
+    'e',
+    'r',
+    't',
+    'y',
+    'u',
+    'i',
+    'o',
+    'p',
+  };
+
+  static const Set<String> _homeRow = {
+    'a',
+    's',
+    'd',
+    'f',
+    'g',
+    'h',
+    'j',
+    'k',
+    'l',
+  };
+
+  static const Set<String> _bottomRow = {'z', 'x', 'c', 'v', 'b', 'n', 'm'};
+
+  static LessonCategory _categoryForKey(String key) {
+    if (_topRow.contains(key)) return LessonCategory.topRow;
+    if (_homeRow.contains(key)) return LessonCategory.homeRow;
+    if (_bottomRow.contains(key)) return LessonCategory.bottomRow;
+    return LessonCategory.commonWords;
+  }
+
+  static LessonCategory _categoryForKeys(List<String> keys) {
+    var top = 0;
+    var home = 0;
+    var bottom = 0;
+
+    for (final key in keys) {
+      if (_topRow.contains(key)) {
+        top++;
+      } else if (_homeRow.contains(key)) {
+        home++;
+      } else if (_bottomRow.contains(key)) {
+        bottom++;
+      }
+    }
+
+    if (home >= top && home >= bottom) return LessonCategory.homeRow;
+    if (top >= home && top >= bottom) return LessonCategory.topRow;
+    if (bottom >= home && bottom >= top) return LessonCategory.bottomRow;
+    return LessonCategory.commonWords;
+  }
+
+  static String _cap(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
+  static String _capWords(String s) =>
+      s.split(' ').map((w) => _cap(w)).join(' ');
+
+  static List<String> _letterIntroExercises(String key) {
+    return [
+      '$key $key $key $key',
+      '$key$key $key$key $key$key',
+      '$key $key $key $key $key $key',
+      '$key$key$key $key$key$key',
+      '$key$key $key$key$key $key$key',
+    ];
+  }
+
+  static List<String> _typeAndMixExercises(String key, List<String> learned) {
+    final a = key;
+    final b = learned.length > 1 ? learned[learned.length - 2] : key;
+    final c = learned.length > 2 ? learned[0] : b;
+    final d = learned.length > 3 ? learned[learned.length - 3] : c;
+
+    return [
+      '$a$a$a $b$b $a$a',
+      '$a$b $b$a $a$b',
+      '$a$c $c$a $a$c',
+      '$a$d $d$a $b$a',
+      '$a$b$c $c$b$a',
+    ];
+  }
+
+  static List<String> _mixExercises(List<String> keys) {
+    final a = keys[0];
+    final b = keys.length > 1 ? keys[1] : keys[0];
+    final c = keys.length > 2 ? keys[2] : b;
+
+    return [
+      '$a $b $c $a $b $c',
+      '$a$b$c $c$b$a',
+      '$a$a $b$b $c$c',
+      '$a$b $b$c $c$a',
+      '$a$b$c $a$c$b $b$a$c',
+    ];
+  }
+
+  static List<String> _playExercises(List<String> keys) {
+    final a = keys[0];
+    final b = keys.length > 1 ? keys[1] : keys[0];
+    final c = keys.length > 2 ? keys[2] : b;
+
+    return [
+      '$a$b$c $a$b$c',
+      '$a$c $b$a $c$b',
+      '$a$a$b $b$c$c',
+      '$c$b$a $a$b$c',
+      '$a$b $c$a $b$c $a$b',
+    ];
+  }
+
+  static List<String> _groupQuestExercises(List<String> keys) {
+    final a = keys[0];
+    final b = keys.length > 1 ? keys[1] : keys[0];
+    final c = keys.length > 2 ? keys[2] : b;
+
+    return [
+      '$a$b $b$c $c$a',
+      '$a$a$b $b$c$c',
+      '$c$b$a $a$c$b',
+      '$a$b$c $b$c$a $c$a$b',
+      '$a$b$c $a$b$c',
+    ];
+  }
+
+  static List<String> _rangeExercises(
+    List<String> range, {
+    required bool reverse,
+  }) {
+    final keys = reverse ? range.reversed.toList() : range;
+    final n = keys.length < 6 ? keys.length : 6;
+    final first = keys.take(n).toList();
+    final second = keys.reversed.take(n).toList().reversed.toList();
+
+    return [
+      first.join(' '),
+      second.join(' '),
+      '${first.join()} ${second.join()}',
+      '${first.join(' ')} ${second.take(3).join(' ')}',
+      '${second.join(' ')} ${first.take(3).join(' ')}',
+    ];
+  }
+
+  static List<String> _rangePracticeExercises(List<String> range) {
+    final n = range.length < 6 ? range.length : 6;
+    final first = range.take(n).toList();
+    final midStart = (range.length ~/ 2) - (n ~/ 2);
+    final safeStart = midStart < 0 ? 0 : midStart;
+    final middle = range.skip(safeStart).take(n).toList();
+    final last = range.reversed.take(n).toList().reversed.toList();
+
+    return [
+      first.join(' '),
+      middle.join(' '),
+      last.join(' '),
+      '${first.join()} ${middle.join()}',
+      '${middle.join()} ${last.join()}',
+    ];
+  }
+
+  static List<String> _rangePlayExercises(List<String> range) {
+    final n = range.length < 6 ? range.length : 6;
+    final a = range.take(n).toList();
+    final b = range.reversed.take(n).toList();
+
+    return [
+      a.join(' '),
+      b.join(' '),
+      '${a.join()} ${b.join()}',
+      '${a.take(3).join(' ')} ${b.take(3).join(' ')}',
+      '${b.take(3).join(' ')} ${a.take(3).join(' ')}',
+    ];
+  }
+
+  static List<String> _rangeCheckpointExercises(List<String> range) {
+    final n = range.length < 6 ? range.length : 6;
+    final left = range.take(n).toList();
+    final right = range.reversed.take(n).toList();
+
+    return [
+      '${left.join(' ')} ${right.join(' ')}',
+      '${left.join()} ${right.join()}',
+      '${left.take(4).join(' ')} ${right.take(4).join(' ')}',
+      '${right.take(4).join(' ')} ${left.take(4).join(' ')}',
+      '${left.take(3).join()} ${right.take(3).join()} ${left.take(2).join()}',
+    ];
+  }
+
+  static List<String> _patternExercises(List<String> words) {
+    return [
+      words.join(' '),
+      '${words[0]} ${words[1]} ${words[0]} ${words[2]}',
+      '${words[3]} ${words[4]} ${words[3]}',
+      'a ${words[0]} and a ${words[1]}',
+      '${words[2]} ${words[3]} ${words[4]}',
+    ];
+  }
+
+  static List<String> _sightWordExercises(String a, String b) {
+    return [
+      '$a $b $a $b',
+      '$a and $b',
+      'we can $a',
+      'you can $b',
+      '$a $b today',
+    ];
+  }
+
+  static List<String> _phraseExercises(String theme) {
+    return [
+      '$theme is here.',
+      'we see $theme.',
+      'i like $theme.',
+      'more $theme today.',
+      '$theme helps us.',
+    ];
+  }
+
+  static List<String> _overallReviewExercises(String topic) {
+    return [
+      '$topic is fun.',
+      'we can type $topic.',
+      'i see $topic today.',
+      '$topic helps me learn.',
+      'great work with $topic.',
+    ];
+  }
 
   /// Get lessons by category
   static List<Lesson> byCategory(LessonCategory category) =>
