@@ -1,0 +1,4 @@
+#!/bin/bash
+set -e
+APPDIR="$(dirname "$(readlink -f "$0")")"
+exec "${APPDIR}/usr/bin/typer_kids" "$@"

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Typer Kids
+Comment=A fun typing tutor for kids with colorful lessons and interactive keyboard
+Exec=typer_kids
+Icon=typer_kids
+Categories=Education;Game;
+Keywords=typing;tutor;keyboard;kids;
+Terminal=false

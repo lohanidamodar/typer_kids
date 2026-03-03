@@ -55,10 +55,22 @@ jobs:
           cd build/windows/x64/runner/Release
           7z a -tzip "${{ github.workspace }}/typer_kids-windows-x64.zip" .
 
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:\s+(\S+)').Matches.Groups[1].Value -replace '\+.*', ''
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=$version" installers\windows\setup.iss
+
       - uses: actions/upload-artifact@v4
         with:
           name: typer_kids-windows-x64
-          path: typer_kids-windows-x64.zip
+          path: |
+            typer_kids-windows-x64.zip
+            typer_kids-windows-x64-setup.exe
 
   # ─────────────────────────────────────────────
   # macOS
@@ -84,10 +96,29 @@ jobs:
           cd build/macos/Build/Products/Release
           zip -r "${{ github.workspace }}/typer_kids-macos-universal.zip" "typer_kids.app"
 
+      - name: Create DMG
+        run: |
+          brew install create-dmg
+          create-dmg \
+            --volname "Typer Kids" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "typer_kids.app" 150 190 \
+            --hide-extension "typer_kids.app" \
+            --app-drop-link 450 190 \
+            --no-internet-enable \
+            "typer_kids-macos-universal.dmg" \
+            "build/macos/Build/Products/Release/typer_kids.app" \
+            || true
+          test -f typer_kids-macos-universal.dmg
+
       - uses: actions/upload-artifact@v4
         with:
           name: typer_kids-macos-universal
-          path: typer_kids-macos-universal.zip
+          path: |
+            typer_kids-macos-universal.zip
+            typer_kids-macos-universal.dmg
 
   # ─────────────────────────────────────────────
   # Linux
@@ -118,10 +149,34 @@ jobs:
           cd build/linux/x64/release/bundle
           tar czf "${{ github.workspace }}/typer_kids-linux-x64.tar.gz" .
 
+      - name: Build AppImage
+        run: |
+          wget -q https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool
+          chmod +x appimagetool
+
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p AppDir/usr/share/applications
+
+          cp -r build/linux/x64/release/bundle/* AppDir/usr/bin/
+
+          cp linux/runner/app_icon.png AppDir/usr/share/icons/hicolor/256x256/apps/typer_kids.png
+          cp linux/runner/app_icon.png AppDir/typer_kids.png
+
+          cp installers/linux/com.lohanidamodar.typer_kids.desktop AppDir/usr/share/applications/
+          cp installers/linux/com.lohanidamodar.typer_kids.desktop AppDir/com.lohanidamodar.typer_kids.desktop
+
+          cp installers/linux/AppRun AppDir/AppRun
+          chmod +x AppDir/AppRun
+
+          ARCH=x86_64 ./appimagetool --appimage-extract-and-run AppDir typer_kids-linux-x64.AppImage
+
       - uses: actions/upload-artifact@v4
         with:
           name: typer_kids-linux-x64
-          path: typer_kids-linux-x64.tar.gz
+          path: |
+            typer_kids-linux-x64.tar.gz
+            typer_kids-linux-x64.AppImage
 
   # ─────────────────────────────────────────────
   # Create / update GitHub Release
@@ -162,5 +217,8 @@ jobs:
           prerelease: false
           files: |
             artifacts/typer_kids-windows-x64/typer_kids-windows-x64.zip
+            artifacts/typer_kids-windows-x64/typer_kids-windows-x64-setup.exe
             artifacts/typer_kids-macos-universal/typer_kids-macos-universal.zip
+            artifacts/typer_kids-macos-universal/typer_kids-macos-universal.dmg
             artifacts/typer_kids-linux-x64/typer_kids-linux-x64.tar.gz
+            artifacts/typer_kids-linux-x64/typer_kids-linux-x64.AppImage
