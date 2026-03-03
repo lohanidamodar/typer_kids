@@ -1,4 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 
 /// Manages sound effects for the app.
 /// All sounds are CC0 synthesized originals (see tool/generate_sfx.dart).
@@ -10,6 +11,9 @@ class SoundManager {
   bool _enabled = true;
   bool get enabled => _enabled;
   set enabled(bool value) => _enabled = value;
+
+  /// Set to false if audio subsystem is unavailable (e.g. missing VC++ runtime).
+  bool _audioAvailable = true;
 
   // Pool of players so overlapping sounds work
   final List<AudioPlayer> _pool = [];
@@ -30,13 +34,15 @@ class SoundManager {
   }
 
   Future<void> _play(String asset, {double volume = 0.5}) async {
-    if (!_enabled) return;
+    if (!_enabled || !_audioAvailable) return;
     try {
       final player = _getPlayer();
       await player.setVolume(volume);
       await player.play(AssetSource('sounds/$asset'));
-    } catch (_) {
-      // Silently ignore audio errors
+    } catch (e) {
+      debugPrint('Audio error ($asset): $e');
+      // Disable audio to prevent repeated failures / native crashes
+      _audioAvailable = false;
     }
   }
 

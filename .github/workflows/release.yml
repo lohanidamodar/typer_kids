@@ -34,6 +34,22 @@ jobs:
       - name: Build Windows
         run: flutter build windows --release
 
+      - name: Bundle VC++ Runtime DLLs
+        shell: pwsh
+        run: |
+          $releaseDir = "build/windows/x64/runner/Release"
+          # Find the latest MSVC CRT redistributable directory
+          $vcDirs = Get-ChildItem "C:\Program Files\Microsoft Visual Studio\*\*\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT" -ErrorAction SilentlyContinue
+          $vcDir = $vcDirs | Sort-Object FullName | Select-Object -Last 1
+          if ($vcDir) {
+            Write-Host "Bundling VC++ Runtime from: $($vcDir.FullName)"
+            Copy-Item "$($vcDir.FullName)\msvcp140.dll" "$releaseDir\" -ErrorAction SilentlyContinue
+            Copy-Item "$($vcDir.FullName)\vcruntime140.dll" "$releaseDir\" -ErrorAction SilentlyContinue
+            Copy-Item "$($vcDir.FullName)\vcruntime140_1.dll" "$releaseDir\" -ErrorAction SilentlyContinue
+          } else {
+            Write-Warning "VC++ Runtime DLLs not found — users may need to install VC++ Redistributable"
+          }
+
       - name: Archive Windows build
         run: |
           cd build/windows/x64/runner/Release
