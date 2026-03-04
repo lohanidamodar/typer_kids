@@ -142,7 +142,7 @@ assets/sounds/      # 8 CC0 WAV sound effects
 
 ## 📄 License
 
-This project is open source. See the repository for license details.
+This project is licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details. You are free to use, modify, and distribute this software, but any derivative work must also be open-sourced under GPL v3.
 
 ## 🙏 Credits
 
