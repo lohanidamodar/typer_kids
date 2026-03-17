@@ -128,34 +128,47 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   /// Speed multiplier: 1.0 on a 600 px tall area, smaller on shorter screens.
   double get _heightScale => (_gameAreaHeight / _refHeight).clamp(0.55, 1.0);
 
+  /// Adaptive speed: starts low, rises on correct answers, dips on misses.
+  /// Range: 0.5 (very slow) → 1.5 (fast). Starts at 0.55 so even medium/hard
+  /// begin gently.
+  double _adaptiveSpeed = 0.55;
+
+  void _onCorrectAdaptive() {
+    _adaptiveSpeed = (_adaptiveSpeed + 0.06).clamp(0.4, 1.5);
+  }
+
+  void _onMissAdaptive() {
+    _adaptiveSpeed = (_adaptiveSpeed - 0.08).clamp(0.4, 1.5);
+  }
+
   double get _spawnInterval => switch (_difficulty) {
     ContentDifficulty.easy => 3.2,
-    ContentDifficulty.medium => 2.4,
-    ContentDifficulty.hard => 1.6,
-  };
+    ContentDifficulty.medium => 2.8,
+    ContentDifficulty.hard => 2.4,
+  } / _adaptiveSpeed;
 
-  double get _minSpeed => _heightScale * switch (_difficulty) {
+  double get _minSpeed => _heightScale * _adaptiveSpeed * switch (_difficulty) {
     ContentDifficulty.easy => 0.045,
-    ContentDifficulty.medium => 0.07,
-    ContentDifficulty.hard => 0.11,
+    ContentDifficulty.medium => 0.045,
+    ContentDifficulty.hard => 0.045,
   };
 
-  double get _maxSpeed => _heightScale * switch (_difficulty) {
+  double get _maxSpeed => _heightScale * _adaptiveSpeed * switch (_difficulty) {
     ContentDifficulty.easy => 0.075,
-    ContentDifficulty.medium => 0.12,
-    ContentDifficulty.hard => 0.18,
+    ContentDifficulty.medium => 0.075,
+    ContentDifficulty.hard => 0.08,
   };
 
   int get _maxWords => switch (_difficulty) {
     ContentDifficulty.easy => 4,
-    ContentDifficulty.medium => 6,
-    ContentDifficulty.hard => 9,
+    ContentDifficulty.medium => 5,
+    ContentDifficulty.hard => 7,
   };
 
   int get _startLives => switch (_difficulty) {
     ContentDifficulty.easy => 6,
     ContentDifficulty.medium => 5,
-    ContentDifficulty.hard => 3,
+    ContentDifficulty.hard => 4,
   };
 
   // ── Lifecycle ──
@@ -189,6 +202,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     _bestStreak = 0;
     _isNewHighScore = false;
     _highScore = 0;
+    _adaptiveSpeed = 0.55;
     _spawnTimer = _spawnInterval - 0.5; // spawn first word quickly
     _lastTick = Duration.zero;
     _gameStart = DateTime.now();
@@ -226,6 +240,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
       _words.remove(w);
       _wordsMissed++;
       _streak = 0;
+      _onMissAdaptive();
       _lives--;
       _sfx.playMiss();
       if (_target == w) {
@@ -349,6 +364,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     _wordsDestroyed++;
     _streak++;
     if (_streak > _bestStreak) _bestStreak = _streak;
+    _onCorrectAdaptive();
     _input = '';
     _target = null;
   }

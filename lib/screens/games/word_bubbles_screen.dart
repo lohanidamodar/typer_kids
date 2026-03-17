@@ -108,6 +108,19 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
   final _sfx = SoundManager();
 
   // ── Difficulty config ──
+
+  /// Adaptive difficulty: starts gentle, ramps on correct, dips on miss.
+  /// Range: 0.5 (very easy) → 1.5 (challenging).
+  double _adaptiveSpeed = 0.55;
+
+  void _onCorrectAdaptive() {
+    _adaptiveSpeed = (_adaptiveSpeed + 0.06).clamp(0.4, 1.5);
+  }
+
+  void _onMissAdaptive() {
+    _adaptiveSpeed = (_adaptiveSpeed - 0.08).clamp(0.4, 1.5);
+  }
+
   int get _gameDuration => switch (_difficulty) {
     ContentDifficulty.easy => 60,
     ContentDifficulty.medium => 75,
@@ -116,20 +129,21 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
 
   double get _spawnInterval => switch (_difficulty) {
     ContentDifficulty.easy => 3.0,
-    ContentDifficulty.medium => 2.2,
-    ContentDifficulty.hard => 1.5,
-  };
+    ContentDifficulty.medium => 2.8,
+    ContentDifficulty.hard => 2.4,
+  } / _adaptiveSpeed;
 
+  /// Bubble life: starts long, shortens as adaptive speed rises.
   double get _bubbleLife => switch (_difficulty) {
     ContentDifficulty.easy => 9.0,
-    ContentDifficulty.medium => 7.0,
-    ContentDifficulty.hard => 5.0,
-  };
+    ContentDifficulty.medium => 9.0,
+    ContentDifficulty.hard => 8.0,
+  } / _adaptiveSpeed;
 
   int get _maxBubbles => switch (_difficulty) {
     ContentDifficulty.easy => 3,
-    ContentDifficulty.medium => 5,
-    ContentDifficulty.hard => 7,
+    ContentDifficulty.medium => 4,
+    ContentDifficulty.hard => 6,
   };
 
   @override
@@ -155,6 +169,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     _popped = 0;
     _missed = 0;
     _streak = 0;
+    _adaptiveSpeed = 0.55;
     _bestStreak = 0;
     _isNewHighScore = false;
     _highScore = 0;
@@ -230,6 +245,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
       _bubbles.remove(b);
       _missed++;
       _streak = 0;
+      _onMissAdaptive();
       _sfx.playMiss();
       if (_target == b) {
         _target = null;
@@ -329,6 +345,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     _popped++;
     _streak++;
     if (_streak > _bestStreak) _bestStreak = _streak;
+    _onCorrectAdaptive();
     _input = '';
     _target = null;
 

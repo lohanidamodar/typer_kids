@@ -148,34 +148,45 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
 
   double get _heightScale => (_gameAreaHeight / _refHeight).clamp(0.55, 1.0);
 
+  /// Adaptive speed: starts gentle, ramps on correct, dips on miss.
+  double _adaptiveSpeed = 0.55;
+
+  void _onCorrectAdaptive() {
+    _adaptiveSpeed = (_adaptiveSpeed + 0.06).clamp(0.4, 1.5);
+  }
+
+  void _onMissAdaptive() {
+    _adaptiveSpeed = (_adaptiveSpeed - 0.08).clamp(0.4, 1.5);
+  }
+
   double get _spawnInterval => switch (_difficulty) {
     ContentDifficulty.easy => 3.4,
-    ContentDifficulty.medium => 2.5,
-    ContentDifficulty.hard => 1.7,
-  };
+    ContentDifficulty.medium => 3.0,
+    ContentDifficulty.hard => 2.6,
+  } / _adaptiveSpeed;
 
-  double get _minSpeed => _heightScale * switch (_difficulty) {
+  double get _minSpeed => _heightScale * _adaptiveSpeed * switch (_difficulty) {
     ContentDifficulty.easy => 0.04,
-    ContentDifficulty.medium => 0.065,
-    ContentDifficulty.hard => 0.10,
+    ContentDifficulty.medium => 0.04,
+    ContentDifficulty.hard => 0.04,
   };
 
-  double get _maxSpeed => _heightScale * switch (_difficulty) {
+  double get _maxSpeed => _heightScale * _adaptiveSpeed * switch (_difficulty) {
     ContentDifficulty.easy => 0.07,
-    ContentDifficulty.medium => 0.11,
-    ContentDifficulty.hard => 0.17,
+    ContentDifficulty.medium => 0.07,
+    ContentDifficulty.hard => 0.075,
   };
 
   int get _maxDemons => switch (_difficulty) {
     ContentDifficulty.easy => 4,
-    ContentDifficulty.medium => 6,
-    ContentDifficulty.hard => 9,
+    ContentDifficulty.medium => 5,
+    ContentDifficulty.hard => 7,
   };
 
   double get _damagePerHit => switch (_difficulty) {
-    ContentDifficulty.easy => 0.12,
-    ContentDifficulty.medium => 0.16,
-    ContentDifficulty.hard => 0.22,
+    ContentDifficulty.easy => 0.10,
+    ContentDifficulty.medium => 0.13,
+    ContentDifficulty.hard => 0.18,
   };
 
   // Temple height as fraction of game area
@@ -207,6 +218,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
     _target = null;
     _score = 0;
     _templeHealth = 1.0;
+    _adaptiveSpeed = 0.55;
     _demonsSlain = 0;
     _demonsReached = 0;
     _streak = 0;
@@ -252,6 +264,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
       _demons.remove(d);
       _demonsReached++;
       _streak = 0;
+      _onMissAdaptive();
       _templeHealth = (_templeHealth - _damagePerHit).clamp(0.0, 1.0);
       _sfx.playMiss();
       _triggerTempleDamageFlash();
@@ -385,6 +398,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
     _score += demon.word.length * 10;
     _demonsSlain++;
     _streak++;
+    _onCorrectAdaptive();
     if (_streak > _bestStreak) _bestStreak = _streak;
     _input = '';
     _target = null;
