@@ -53,6 +53,25 @@ class _Ghost {
   });
 }
 
+/// A trishul projectile flying from the temple up to a demon.
+class _Trishul {
+  final double targetX; // fraction 0..1
+  final double targetY; // fraction 0..1
+  final DateTime spawnTime;
+  static const duration = Duration(milliseconds: 650);
+
+  _Trishul({required this.targetX, required this.targetY})
+      : spawnTime = DateTime.now();
+
+  /// 0.0 = just spawned at temple, 1.0 = reached target.
+  double get progress =>
+      (DateTime.now().difference(spawnTime).inMilliseconds /
+          duration.inMilliseconds)
+          .clamp(0.0, 1.0);
+
+  bool get done => progress >= 1.0;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Screen
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,6 +125,9 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
 
   // Damage flash on temple
   bool _templeDamageFlash = false;
+
+  // Trishul projectiles in flight
+  final List<_Trishul> _trishuls = [];
 
   // ── Animation ──
   late final Ticker _ticker;
@@ -180,6 +202,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
   void _startGame() {
     _demons.clear();
     _ghosts.clear();
+    _trishuls.clear();
     _input = '';
     _target = null;
     _score = 0;
@@ -349,14 +372,31 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
   }
 
   void _slayDemon(_DemonWord demon) {
-    _addGhost(demon.word, demon.x, demon.y, true, demon.colorIndex);
-    _demons.remove(demon);
+    // Launch trishul from temple toward the demon
+    final trishul = _Trishul(targetX: demon.x, targetY: demon.y);
+    _trishuls.add(trishul);
+
+    // Freeze the demon in place (mark for removal after trishul arrives)
+    final word = demon.word;
+    final dx = demon.x;
+    final dy = demon.y;
+    final ci = demon.colorIndex;
+
     _score += demon.word.length * 10;
     _demonsSlain++;
     _streak++;
     if (_streak > _bestStreak) _bestStreak = _streak;
     _input = '';
     _target = null;
+
+    // After trishul reaches target, remove demon and show ghost
+    Timer(_Trishul.duration, () {
+      if (!mounted) return;
+      _demons.remove(demon);
+      _trishuls.remove(trishul);
+      _addGhost(word, dx, dy, true, ci);
+      setState(() {});
+    });
   }
 
   void _addGhost(
@@ -770,6 +810,9 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
               // Demons
               for (final d in _demons)
                 _buildDemonWidget(d, areaW, areaH),
+              // Trishul projectiles
+              for (final t in _trishuls)
+                _buildTrishul(t, areaW, areaH),
               // Ghost indicators
               for (final g in _ghosts)
                 _buildGhostIndicator(g, areaW, areaH),
@@ -1026,7 +1069,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
           Text(
             '👹',
             style: TextStyle(
-              fontSize: fontSize * 1.8,
+              fontSize: fontSize * 2.5,
               shadows: [
                 Shadow(
                   color: color.withValues(alpha: 0.8),
@@ -1037,6 +1080,42 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTrishul(_Trishul t, double areaW, double areaH) {
+    final startX = areaW / 2;
+    final startY = areaH * (1.0 - _templeHeightFrac * 0.3);
+    final endX = t.targetX * areaW;
+    // Offset down to hit the demon emoji (below the word label)
+    final demonOffset = _wordFontSize * 2.2;
+    final endY = t.targetY * areaH + demonOffset;
+
+    // Angle from start to end so the trishul points at the demon
+    final dx = endX - startX;
+    final dy = endY - startY;
+    final angle = atan2(dy, dx) + pi / 2; // +90 deg because 🔱 points up
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: _Trishul.duration,
+      builder: (context, p, child) {
+        final eased = 1.0 - (1.0 - p) * (1.0 - p);
+        final cx = startX + (endX - startX) * eased;
+        final cy = startY + (endY - startY) * eased;
+
+        return Positioned(
+          left: cx - 18,
+          top: cy - 18,
+          child: Opacity(
+            opacity: p < 0.85 ? 1.0 : ((1.0 - p) / 0.15).clamp(0.0, 1.0),
+            child: Transform.rotate(
+              angle: angle,
+              child: const Text('🔱', style: TextStyle(fontSize: 36)),
+            ),
+          ),
+        );
+      },
     );
   }
 

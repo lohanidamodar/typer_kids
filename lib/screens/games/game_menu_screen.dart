@@ -28,13 +28,13 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
     if (key == LogicalKeyboardKey.escape) {
       context.pop();
     } else if (key == LogicalKeyboardKey.digit1) {
-      context.push('/games/falling-words');
-    } else if (key == LogicalKeyboardKey.digit2) {
-      context.push('/games/word-bubbles');
-    } else if (key == LogicalKeyboardKey.digit3) {
-      context.push('/games/speed-chase');
-    } else if (key == LogicalKeyboardKey.digit4) {
       context.push('/games/defend-temple');
+    } else if (key == LogicalKeyboardKey.digit2) {
+      context.push('/games/falling-words');
+    } else if (key == LogicalKeyboardKey.digit3) {
+      context.push('/games/word-bubbles');
+    } else if (key == LogicalKeyboardKey.digit4) {
+      context.push('/games/speed-chase');
     }
   }
 
@@ -120,11 +120,22 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                         SizedBox(height: sectionGap),
                         // ── Game cards ──
                         _GameCard(
+                          emoji: '🏯',
+                          title: 'Defend the Temple',
+                          description:
+                              'Stop the demons before they reach your temple!',
+                          shortcut: '1',
+                          color: const Color(0xFF8B0000),
+                          compact: !isTall,
+                          onTap: () => context.push('/games/defend-temple'),
+                        ),
+                        SizedBox(height: cardGap),
+                        _GameCard(
                           emoji: '⬇️',
                           title: 'Falling Words',
                           description:
                               'Type the words before they reach the bottom!',
-                          shortcut: '1',
+                          shortcut: '2',
                           color: AppColors.primary,
                           compact: !isTall,
                           onTap: () => context.push('/games/falling-words'),
@@ -135,7 +146,7 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                           title: 'Word Bubbles',
                           description:
                               'Pop the floating bubbles by typing the words!',
-                          shortcut: '2',
+                          shortcut: '3',
                           color: const Color(0xFF26C6DA),
                           compact: !isTall,
                           onTap: () => context.push('/games/word-bubbles'),
@@ -146,21 +157,10 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                           title: 'Speed Chase',
                           description:
                               'Type words faster than the ghost racer!',
-                          shortcut: '3',
+                          shortcut: '4',
                           color: const Color(0xFFE53935),
                           compact: !isTall,
                           onTap: () => context.push('/games/speed-chase'),
-                        ),
-                        SizedBox(height: cardGap),
-                        _GameCard(
-                          emoji: '🏯',
-                          title: 'Defend the Temple',
-                          description:
-                              'Stop the demons before they reach your temple!',
-                          shortcut: '4',
-                          color: const Color(0xFF8B0000),
-                          compact: !isTall,
-                          onTap: () => context.push('/games/defend-temple'),
                         ),
                       ],
                     ),
