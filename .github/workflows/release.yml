@@ -94,7 +94,7 @@ jobs:
       - name: Archive macOS build
         run: |
           cd build/macos/Build/Products/Release
-          zip -r "${{ github.workspace }}/typer_kids-macos-universal.zip" "typer_kids.app"
+          zip -r "${{ github.workspace }}/typer_kids-macos-universal.zip" "Typer Kids.app"
 
       - name: Create DMG
         run: |
@@ -104,12 +104,12 @@ jobs:
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 100 \
-            --icon "typer_kids.app" 150 190 \
-            --hide-extension "typer_kids.app" \
+            --icon "Typer Kids.app" 150 190 \
+            --hide-extension "Typer Kids.app" \
             --app-drop-link 450 190 \
             --no-internet-enable \
             "typer_kids-macos-universal.dmg" \
-            "build/macos/Build/Products/Release/typer_kids.app" \
+            "build/macos/Build/Products/Release/Typer Kids.app" \
             || true
           test -f typer_kids-macos-universal.dmg
 
