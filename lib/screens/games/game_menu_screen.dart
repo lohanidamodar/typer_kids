@@ -28,10 +28,12 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
     if (key == LogicalKeyboardKey.escape) {
       context.pop();
     } else if (key == LogicalKeyboardKey.digit1) {
-      context.push('/games/falling-words');
+      context.push('/games/defend-temple');
     } else if (key == LogicalKeyboardKey.digit2) {
-      context.push('/games/word-bubbles');
+      context.push('/games/falling-words');
     } else if (key == LogicalKeyboardKey.digit3) {
+      context.push('/games/word-bubbles');
+    } else if (key == LogicalKeyboardKey.digit4) {
       context.push('/games/speed-chase');
     }
   }
@@ -51,14 +53,58 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
               final screenH = constraints.maxHeight;
               final isWide = screenW > 600;
               final isTall = screenH > 700;
+              final useGrid = screenW > 860;
 
               final hPad = isWide ? 40.0 : 20.0;
               final vPad = isTall ? 32.0 : 16.0;
-              final maxW = isWide ? 620.0 : screenW;
+              final maxW = useGrid ? 900.0 : isWide ? 620.0 : screenW;
               final headerFontSize = isWide ? 36.0 : 28.0;
               final emojiSize = isTall ? 56.0 : 40.0;
               final sectionGap = isTall ? 32.0 : 18.0;
               final cardGap = isTall ? 14.0 : 10.0;
+
+              final gameCards = <Widget>[
+                _GameCard(
+                  emoji: '🏯',
+                  title: 'Defend the Temple',
+                  description:
+                      'Stop the demons before they reach your temple!',
+                  shortcut: '1',
+                  color: const Color(0xFF8B0000),
+                  compact: !isTall,
+                  onTap: () => context.push('/games/defend-temple'),
+                ),
+                _GameCard(
+                  emoji: '⬇️',
+                  title: 'Falling Words',
+                  description:
+                      'Type the words before they reach the bottom!',
+                  shortcut: '2',
+                  color: AppColors.primary,
+                  compact: !isTall,
+                  onTap: () => context.push('/games/falling-words'),
+                ),
+                _GameCard(
+                  emoji: '🫧',
+                  title: 'Word Bubbles',
+                  description:
+                      'Pop the floating bubbles by typing the words!',
+                  shortcut: '3',
+                  color: const Color(0xFF26C6DA),
+                  compact: !isTall,
+                  onTap: () => context.push('/games/word-bubbles'),
+                ),
+                _GameCard(
+                  emoji: '🏎️',
+                  title: 'Speed Chase',
+                  description:
+                      'Type words faster than the ghost racer!',
+                  shortcut: '4',
+                  color: const Color(0xFFE53935),
+                  compact: !isTall,
+                  onTap: () => context.push('/games/speed-chase'),
+                ),
+              ];
 
               return Center(
                 child: SingleChildScrollView(
@@ -117,38 +163,33 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                         ),
                         SizedBox(height: sectionGap),
                         // ── Game cards ──
-                        _GameCard(
-                          emoji: '⬇️',
-                          title: 'Falling Words',
-                          description:
-                              'Type the words before they reach the bottom!',
-                          shortcut: '1',
-                          color: AppColors.primary,
-                          compact: !isTall,
-                          onTap: () => context.push('/games/falling-words'),
-                        ),
-                        SizedBox(height: cardGap),
-                        _GameCard(
-                          emoji: '🫧',
-                          title: 'Word Bubbles',
-                          description:
-                              'Pop the floating bubbles by typing the words!',
-                          shortcut: '2',
-                          color: const Color(0xFF26C6DA),
-                          compact: !isTall,
-                          onTap: () => context.push('/games/word-bubbles'),
-                        ),
-                        SizedBox(height: cardGap),
-                        _GameCard(
-                          emoji: '🏎️',
-                          title: 'Speed Chase',
-                          description:
-                              'Type words faster than the ghost racer!',
-                          shortcut: '3',
-                          color: const Color(0xFFE53935),
-                          compact: !isTall,
-                          onTap: () => context.push('/games/speed-chase'),
-                        ),
+                        if (useGrid) ...[
+                          // 2x2 grid
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: gameCards[0]),
+                              SizedBox(width: cardGap),
+                              Expanded(child: gameCards[1]),
+                            ],
+                          ),
+                          SizedBox(height: cardGap),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: gameCards[2]),
+                              SizedBox(width: cardGap),
+                              Expanded(child: gameCards[3]),
+                            ],
+                          ),
+                        ] else ...[
+                          // Vertical list
+                          for (var i = 0; i < gameCards.length; i++) ...[
+                            gameCards[i],
+                            if (i < gameCards.length - 1)
+                              SizedBox(height: cardGap),
+                          ],
+                        ],
                       ],
                     ),
                   ),

@@ -36,7 +36,7 @@ class _Bubble {
     required this.life,
   }) : maxLife = life;
 
-  double get opacity => (life / maxLife).clamp(0.3, 1.0);
+  double get opacity => (life / maxLife).clamp(0.4, 1.0);
 }
 
 class _Ghost {
@@ -108,6 +108,19 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
   final _sfx = SoundManager();
 
   // ── Difficulty config ──
+
+  /// Adaptive difficulty: starts gentle, ramps on correct, dips on miss.
+  /// Range: 0.5 (very easy) → 1.5 (challenging).
+  double _adaptiveSpeed = 0.55;
+
+  void _onCorrectAdaptive() {
+    _adaptiveSpeed = (_adaptiveSpeed + 0.06).clamp(0.4, 1.5);
+  }
+
+  void _onMissAdaptive() {
+    _adaptiveSpeed = (_adaptiveSpeed - 0.08).clamp(0.4, 1.5);
+  }
+
   int get _gameDuration => switch (_difficulty) {
     ContentDifficulty.easy => 60,
     ContentDifficulty.medium => 75,
@@ -115,21 +128,22 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
   };
 
   double get _spawnInterval => switch (_difficulty) {
-    ContentDifficulty.easy => 2.5,
-    ContentDifficulty.medium => 1.8,
-    ContentDifficulty.hard => 1.2,
-  };
+    ContentDifficulty.easy => 3.0,
+    ContentDifficulty.medium => 2.8,
+    ContentDifficulty.hard => 2.4,
+  } / _adaptiveSpeed;
 
+  /// Bubble life: starts long, shortens as adaptive speed rises.
   double get _bubbleLife => switch (_difficulty) {
-    ContentDifficulty.easy => 6.0,
-    ContentDifficulty.medium => 4.5,
-    ContentDifficulty.hard => 3.5,
-  };
+    ContentDifficulty.easy => 9.0,
+    ContentDifficulty.medium => 9.0,
+    ContentDifficulty.hard => 8.0,
+  } / _adaptiveSpeed;
 
   int get _maxBubbles => switch (_difficulty) {
-    ContentDifficulty.easy => 4,
-    ContentDifficulty.medium => 6,
-    ContentDifficulty.hard => 8,
+    ContentDifficulty.easy => 3,
+    ContentDifficulty.medium => 4,
+    ContentDifficulty.hard => 6,
   };
 
   @override
@@ -155,6 +169,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     _popped = 0;
     _missed = 0;
     _streak = 0;
+    _adaptiveSpeed = 0.55;
     _bestStreak = 0;
     _isNewHighScore = false;
     _highScore = 0;
@@ -222,7 +237,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     // Fade bubbles
     final expired = <_Bubble>[];
     for (final b in _bubbles) {
-      b.life -= 0.1;
+      b.life -= 0.08;
       if (b.life <= 0) expired.add(b);
     }
     for (final b in expired) {
@@ -230,6 +245,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
       _bubbles.remove(b);
       _missed++;
       _streak = 0;
+      _onMissAdaptive();
       _sfx.playMiss();
       if (_target == b) {
         _target = null;
@@ -329,8 +345,22 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     _popped++;
     _streak++;
     if (_streak > _bestStreak) _bestStreak = _streak;
+    _onCorrectAdaptive();
     _input = '';
     _target = null;
+
+    // All bubbles cleared → spawn next one immediately & reset spawn timer
+    if (_bubbles.isEmpty && _phase == _Phase.playing) {
+      _spawnBubble();
+      _spawnTimer?.cancel();
+      _spawnTimer = Timer.periodic(
+        Duration(milliseconds: (_spawnInterval * 1000).round()),
+        (_) {
+          if (!mounted || _phase != _Phase.playing) return;
+          _spawnBubble();
+        },
+      );
+    }
   }
 
   void _addGhost(
@@ -643,6 +673,16 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
                   ),
                   child: Row(
                     children: [
+                      // Close button
+                      InkWell(
+                        onTap: _showQuitDialog,
+                        borderRadius: BorderRadius.circular(8),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.close_rounded, size: 22, color: AppColors.textSecondary),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Text('⭐', style: const TextStyle(fontSize: 20)),
                       const SizedBox(width: 4),
                       Text(
@@ -722,10 +762,10 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
         final areaW = constraints.maxWidth;
         final areaH = constraints.maxHeight;
         final fontSize = areaW > 800
-            ? 24.0
+            ? 26.0
             : areaW > 500
-            ? 20.0
-            : 16.0;
+            ? 22.0
+            : 18.0;
 
         return Stack(
           clipBehavior: Clip.hardEdge,
@@ -758,7 +798,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
   ) {
     final isTarget = bubble == _target;
     final color = _bubbleColors[bubble.colorIndex];
-    final size = bubble.word.length * (fontSize * 0.7) + 52;
+    final size = bubble.word.length * (fontSize * 0.8) + 68;
 
     final left = (bubble.x * (areaW - size)).clamp(0.0, areaW - size);
     final top = (bubble.y * (areaH - size)).clamp(0.0, areaH - size);
@@ -772,8 +812,8 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 120),
           padding: EdgeInsets.symmetric(
-            horizontal: fontSize * 0.8,
-            vertical: fontSize * 0.5,
+            horizontal: fontSize * 1.0,
+            vertical: fontSize * 0.7,
           ),
           decoration: BoxDecoration(
             color: isTarget ? color : color.withValues(alpha: 0.8),

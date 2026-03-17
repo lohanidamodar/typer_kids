@@ -1,11 +1,11 @@
 {
-    "name": "typer_kids",
-    "short_name": "typer_kids",
+    "name": "Typer Kids",
+    "short_name": "Typer Kids",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "A fun typing tutor app for kids with colorful lessons and interactive keyboard.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

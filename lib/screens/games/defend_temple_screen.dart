@@ -21,14 +21,14 @@ enum _Phase { setup, playing, gameOver }
 
 enum _FlashType { correct, wrong }
 
-class _FallingWord {
+class _DemonWord {
   final String word;
-  double x; // 0.0 – 1.0 (fraction of available width)
-  double y; // 0.0 – 1.0 (fraction of available height, 0 = top)
+  double x; // 0.0 – 1.0 fraction of width
+  double y; // 0.0 – 1.0 fraction of height (0 = top)
   final double speed; // fraction of height per second
   final int colorIndex;
 
-  _FallingWord({
+  _DemonWord({
     required this.word,
     required this.x,
     required this.y,
@@ -37,12 +37,11 @@ class _FallingWord {
   });
 }
 
-/// Brief ghost left behind when a word is destroyed or missed.
 class _Ghost {
   final String word;
   final double x;
   final double y;
-  final bool success; // true = correct, false = wrong/miss
+  final bool success;
   final int colorIndex;
 
   _Ghost({
@@ -54,43 +53,65 @@ class _Ghost {
   });
 }
 
+/// A trishul projectile flying from the temple up to a demon.
+class _Trishul {
+  final double targetX; // fraction 0..1
+  final double targetY; // fraction 0..1
+  final DateTime spawnTime;
+  static const duration = Duration(milliseconds: 650);
+
+  _Trishul({required this.targetX, required this.targetY})
+      : spawnTime = DateTime.now();
+
+  /// 0.0 = just spawned at temple, 1.0 = reached target.
+  double get progress =>
+      (DateTime.now().difference(spawnTime).inMilliseconds /
+          duration.inMilliseconds)
+          .clamp(0.0, 1.0);
+
+  bool get done => progress >= 1.0;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Screen
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Falling words typing game — type words before they hit the ground!
-class FallingWordsScreen extends StatefulWidget {
-  const FallingWordsScreen({super.key});
+class DefendTempleScreen extends StatefulWidget {
+  const DefendTempleScreen({super.key});
 
   @override
-  State<FallingWordsScreen> createState() => _FallingWordsScreenState();
+  State<DefendTempleScreen> createState() => _DefendTempleScreenState();
 }
 
-class _FallingWordsScreenState extends State<FallingWordsScreen>
+class _DefendTempleScreenState extends State<DefendTempleScreen>
     with SingleTickerProviderStateMixin {
-  // ── Visual ──
-  static const _bubbleColors = [
-    Color(0xFF4CAF50), // green
-    Color(0xFF2196F3), // blue
-    Color(0xFFFF9800), // orange
-    Color(0xFF9C27B0), // purple
-    Color(0xFFE91E63), // pink
-    Color(0xFF00BCD4), // teal
-    Color(0xFFFF5722), // deep orange
-    Color(0xFF3F51B5), // indigo
+  // ── Theme colors ──
+  static const _demonColors = [
+    Color(0xFF8B0000), // dark red
+    Color(0xFF4A0E4E), // dark purple
+    Color(0xFFB22222), // firebrick
+    Color(0xFF2C1654), // indigo-dark
+    Color(0xFF6B1010), // blood
+    Color(0xFF1B4332), // dark green
+    Color(0xFF5C1A1A), // maroon
+    Color(0xFF3D0C5E), // violet
   ];
+
+  static const _bgTop = Color(0xFF05031A);
+  static const _bgMid = Color(0xFF120A3A);
+  static const _bgBottom = Color(0xFF1E1250);
 
   // ── State ──
   _Phase _phase = _Phase.setup;
   ContentDifficulty _difficulty = ContentDifficulty.easy;
 
-  final List<_FallingWord> _words = [];
+  final List<_DemonWord> _demons = [];
   String _input = '';
-  _FallingWord? _target;
+  _DemonWord? _target;
   int _score = 0;
-  int _lives = 5;
-  int _wordsDestroyed = 0;
-  int _wordsMissed = 0;
+  double _templeHealth = 1.0; // 0.0 = destroyed, 1.0 = full
+  int _demonsSlain = 0;
+  int _demonsReached = 0;
   int _streak = 0;
   int _bestStreak = 0;
   DateTime? _gameStart;
@@ -98,12 +119,15 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   bool _isNewHighScore = false;
   int _highScore = 0;
 
-  // Feedback flash
   _FlashType? _flash;
   Timer? _flashTimer;
-
-  // Ghost feedback bubbles (shown at word position on pop/miss)
   final List<_Ghost> _ghosts = [];
+
+  // Damage flash on temple
+  bool _templeDamageFlash = false;
+
+  // Trishul projectiles in flight
+  final List<_Trishul> _trishuls = [];
 
   // ── Animation ──
   late final Ticker _ticker;
@@ -119,18 +143,12 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   final _sfx = SoundManager();
 
   // ── Difficulty config ──
-  //
-  // Reference height used to calibrate fall speed.  On screens shorter than
-  // this the words slow down proportionally so kids have enough reaction time.
   static const _refHeight = 600.0;
   double _gameAreaHeight = _refHeight;
 
-  /// Speed multiplier: 1.0 on a 600 px tall area, smaller on shorter screens.
   double get _heightScale => (_gameAreaHeight / _refHeight).clamp(0.55, 1.0);
 
-  /// Adaptive speed: starts low, rises on correct answers, dips on misses.
-  /// Range: 0.5 (very slow) → 1.5 (fast). Starts at 0.55 so even medium/hard
-  /// begin gently.
+  /// Adaptive speed: starts gentle, ramps on correct, dips on miss.
   double _adaptiveSpeed = 0.55;
 
   void _onCorrectAdaptive() {
@@ -142,34 +160,37 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   }
 
   double get _spawnInterval => switch (_difficulty) {
-    ContentDifficulty.easy => 3.2,
-    ContentDifficulty.medium => 2.8,
-    ContentDifficulty.hard => 2.4,
+    ContentDifficulty.easy => 3.4,
+    ContentDifficulty.medium => 3.0,
+    ContentDifficulty.hard => 2.6,
   } / _adaptiveSpeed;
 
   double get _minSpeed => _heightScale * _adaptiveSpeed * switch (_difficulty) {
-    ContentDifficulty.easy => 0.045,
-    ContentDifficulty.medium => 0.045,
-    ContentDifficulty.hard => 0.045,
+    ContentDifficulty.easy => 0.04,
+    ContentDifficulty.medium => 0.04,
+    ContentDifficulty.hard => 0.04,
   };
 
   double get _maxSpeed => _heightScale * _adaptiveSpeed * switch (_difficulty) {
-    ContentDifficulty.easy => 0.075,
-    ContentDifficulty.medium => 0.075,
-    ContentDifficulty.hard => 0.08,
+    ContentDifficulty.easy => 0.07,
+    ContentDifficulty.medium => 0.07,
+    ContentDifficulty.hard => 0.075,
   };
 
-  int get _maxWords => switch (_difficulty) {
+  int get _maxDemons => switch (_difficulty) {
     ContentDifficulty.easy => 4,
     ContentDifficulty.medium => 5,
     ContentDifficulty.hard => 7,
   };
 
-  int get _startLives => switch (_difficulty) {
-    ContentDifficulty.easy => 6,
-    ContentDifficulty.medium => 5,
-    ContentDifficulty.hard => 4,
+  double get _damagePerHit => switch (_difficulty) {
+    ContentDifficulty.easy => 0.10,
+    ContentDifficulty.medium => 0.13,
+    ContentDifficulty.hard => 0.18,
   };
+
+  // Temple height as fraction of game area
+  static const _templeHeightFrac = 0.22;
 
   // ── Lifecycle ──
   @override
@@ -190,20 +211,22 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
 
   // ── Game logic ──
   void _startGame() {
-    _words.clear();
+    _demons.clear();
     _ghosts.clear();
+    _trishuls.clear();
     _input = '';
     _target = null;
     _score = 0;
-    _lives = _startLives;
-    _wordsDestroyed = 0;
-    _wordsMissed = 0;
+    _templeHealth = 1.0;
+    _adaptiveSpeed = 0.55;
+    _demonsSlain = 0;
+    _demonsReached = 0;
     _streak = 0;
     _bestStreak = 0;
     _isNewHighScore = false;
     _highScore = 0;
-    _adaptiveSpeed = 0.55;
-    _spawnTimer = _spawnInterval - 0.5; // spawn first word quickly
+    _templeDamageFlash = false;
+    _spawnTimer = _spawnInterval - 0.5;
     _lastTick = Duration.zero;
     _gameStart = DateTime.now();
     _phase = _Phase.playing;
@@ -223,31 +246,33 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
 
     // Spawn
     _spawnTimer += dt;
-    if (_spawnTimer >= _spawnInterval && _words.length < _maxWords) {
-      _spawnWord();
+    if (_spawnTimer >= _spawnInterval && _demons.length < _maxDemons) {
+      _spawnDemon();
       _spawnTimer = 0;
     }
 
-    // Move
-    for (final w in _words) {
-      w.y += w.speed * dt;
+    // Move — demons stop at the temple line, not at y=1.0
+    final templeY = 1.0 - _templeHeightFrac;
+    for (final d in _demons) {
+      d.y += d.speed * dt;
     }
 
-    // Missed words
-    final missed = _words.where((w) => w.y >= 1.0).toList();
-    for (final w in missed) {
-      _addGhost(w.word, w.x, w.y.clamp(0.0, 0.92), false, w.colorIndex);
-      _words.remove(w);
-      _wordsMissed++;
+    // Demons that reached the temple
+    final reached = _demons.where((d) => d.y >= templeY).toList();
+    for (final d in reached) {
+      _addGhost(d.word, d.x, templeY - 0.02, false, d.colorIndex);
+      _demons.remove(d);
+      _demonsReached++;
       _streak = 0;
       _onMissAdaptive();
-      _lives--;
+      _templeHealth = (_templeHealth - _damagePerHit).clamp(0.0, 1.0);
       _sfx.playMiss();
-      if (_target == w) {
+      _triggerTempleDamageFlash();
+      if (_target == d) {
         _target = null;
         _input = '';
       }
-      if (_lives <= 0) {
+      if (_templeHealth <= 0) {
         _endGame();
         return;
       }
@@ -256,23 +281,30 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     setState(() {});
   }
 
-  void _spawnWord() {
+  void _spawnDemon() {
     String word;
     int tries = 0;
     do {
       word = WordLists.randomWord(_difficulty);
       tries++;
-    } while (_words.any((w) => w.word == word) && tries < 10);
+    } while (_demons.any((d) => d.word == word) && tries < 10);
 
-    _words.add(
-      _FallingWord(
+    _demons.add(
+      _DemonWord(
         word: word,
         x: _random.nextDouble() * 0.70 + 0.05,
         y: -0.02,
         speed: _minSpeed + _random.nextDouble() * (_maxSpeed - _minSpeed),
-        colorIndex: _random.nextInt(_bubbleColors.length),
+        colorIndex: _random.nextInt(_demonColors.length),
       ),
     );
+  }
+
+  void _triggerTempleDamageFlash() {
+    _templeDamageFlash = true;
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) setState(() => _templeDamageFlash = false);
+    });
   }
 
   void _showFlash(_FlashType type) {
@@ -301,7 +333,6 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
       return;
     }
 
-    // Space/Enter clears input when there's no matching target
     if (event.logicalKey == LogicalKeyboardKey.space ||
         event.logicalKey == LogicalKeyboardKey.enter) {
       if (_input.isNotEmpty && _target == null) {
@@ -321,9 +352,8 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     _input += char.toLowerCase();
     _updateTarget();
 
-    // Exact match → destroy
     if (_target != null && _input == _target!.word) {
-      _destroyWord(_target!);
+      _slayDemon(_target!);
       _showFlash(_FlashType.correct);
       _sfx.playPop();
       if (_streak >= 3) _sfx.playStreak();
@@ -339,34 +369,48 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
       _target = null;
       return;
     }
-    // Keep existing target if still valid
     if (_target != null &&
-        _words.contains(_target) &&
+        _demons.contains(_target) &&
         _target!.word.startsWith(_input)) {
       return;
     }
-    // Pick lowest matching word
     _target = null;
-    for (final w in _words) {
-      if (w.word.startsWith(_input)) {
-        if (_target == null || w.y > _target!.y) {
-          _target = w;
-        }
+    double bestY = -1;
+    for (final d in _demons) {
+      if (d.word.startsWith(_input) && d.y > bestY) {
+        bestY = d.y;
+        _target = d;
       }
     }
   }
 
-  void _destroyWord(_FallingWord word) {
-    // Add success ghost at word position
-    _addGhost(word.word, word.x, word.y, true, word.colorIndex);
-    _words.remove(word);
-    _score += word.word.length * 10;
-    _wordsDestroyed++;
+  void _slayDemon(_DemonWord demon) {
+    // Launch trishul from temple toward the demon
+    final trishul = _Trishul(targetX: demon.x, targetY: demon.y);
+    _trishuls.add(trishul);
+
+    // Freeze the demon in place (mark for removal after trishul arrives)
+    final word = demon.word;
+    final dx = demon.x;
+    final dy = demon.y;
+    final ci = demon.colorIndex;
+
+    _score += demon.word.length * 10;
+    _demonsSlain++;
     _streak++;
-    if (_streak > _bestStreak) _bestStreak = _streak;
     _onCorrectAdaptive();
+    if (_streak > _bestStreak) _bestStreak = _streak;
     _input = '';
     _target = null;
+
+    // After trishul reaches target, remove demon and show ghost
+    Timer(_Trishul.duration, () {
+      if (!mounted) return;
+      _demons.remove(demon);
+      _trishuls.remove(trishul);
+      _addGhost(word, dx, dy, true, ci);
+      setState(() {});
+    });
   }
 
   void _addGhost(
@@ -394,12 +438,12 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
 
   void _endGame() {
     _ticker.stop();
+    _gameDuration =
+        _gameStart != null ? DateTime.now().difference(_gameStart!) : Duration.zero;
     _sfx.playGameOver();
-    _gameDuration = DateTime.now().difference(_gameStart ?? DateTime.now());
-    // Record high score
     final progress = Provider.of<ProgressProvider>(context, listen: false);
-    _highScore = progress.getHighScore('falling_words');
-    progress.recordScore('falling_words', _score).then((isNew) {
+    _highScore = progress.getHighScore('defend_temple');
+    progress.recordScore('defend_temple', _score).then((isNew) {
       if (mounted) setState(() => _isNewHighScore = isNew);
     });
     _phase = _Phase.gameOver;
@@ -415,24 +459,24 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
       context: context,
       barrierDismissible: false,
       builder: (ctx) => _QuitDialog(
-        onResume: () => Navigator.of(ctx).pop(),
+        onResume: () {
+          Navigator.of(ctx).pop();
+          if (_phase == _Phase.playing && mounted) {
+            _lastTick = Duration.zero;
+            _ticker.start();
+          }
+        },
         onQuit: () {
           Navigator.of(ctx).pop();
-          if (mounted) context.pop();
+          context.pop();
         },
       ),
     ).then((_) {
       if (_phase == _Phase.playing && mounted) {
-        _lastTick = Duration.zero;
-        _ticker.start();
         _gameFocusNode.requestFocus();
       }
     });
   }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // BUILD
-  // ──────────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -464,7 +508,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
 
   Widget _buildSetup() {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _bgTop,
       body: KeyboardListener(
         focusNode: _setupFocusNode,
         autofocus: true,
@@ -511,96 +555,94 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                                   style: GoogleFonts.fredoka(fontSize: 16),
                                 ),
                                 const SizedBox(width: 6),
-                                _keyBadge('Esc', AppColors.textSecondary),
+                                _keyBadge('Esc', Colors.white70),
                               ],
                             ),
                             style: TextButton.styleFrom(
-                              foregroundColor: AppColors.textSecondary,
+                              foregroundColor: Colors.white70,
                             ),
                           ),
                         ),
-                        SizedBox(height: isTall ? 16 : 8),
-                        Text('⬇️', style: TextStyle(fontSize: emojiSize)),
+                        SizedBox(height: isTall ? 12 : 6),
+                        // Header
+                        Text('🏯', style: TextStyle(fontSize: emojiSize)),
                         SizedBox(height: isTall ? 8 : 4),
                         Text(
-                          'Falling Words',
+                          'Defend the Temple',
                           style: GoogleFonts.fredoka(
                             fontSize: headerFontSize,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                            color: const Color(0xFFFF6B6B),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Type the words before they reach the bottom!',
+                          'Demons are attacking! Type to destroy them\nbefore they reach your temple!',
                           style: GoogleFonts.nunito(
                             fontSize: isWide ? 16.0 : 14.0,
-                            color: AppColors.textSecondary,
+                            color: Colors.white60,
                           ),
                           textAlign: TextAlign.center,
                         ),
                         SizedBox(height: sectionGap),
-                        // Difficulty selector
+                        // Difficulty
                         Text(
                           'Choose Difficulty',
                           style: GoogleFonts.fredoka(
-                            fontSize: isWide ? 20.0 : 18.0,
+                            fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: Colors.white70,
                           ),
                         ),
-                        SizedBox(height: isTall ? 14 : 10),
+                        SizedBox(height: isTall ? 12 : 8),
                         Row(
-                          children: ContentDifficulty.values.map((d) {
-                            final selected = d == _difficulty;
+                          children: ContentDifficulty.values
+                              .asMap()
+                              .entries
+                              .map((e) {
                             return Expanded(
                               child: Padding(
-                                padding: EdgeInsets.only(
-                                  left: d.index == 0 ? 0 : 6,
-                                  right: d.index == 2 ? 0 : 6,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isWide ? 6 : 4,
                                 ),
                                 child: _DifficultyCard(
-                                  difficulty: d,
-                                  index: d.index + 1,
-                                  selected: selected,
+                                  difficulty: e.value,
+                                  index: e.key + 1,
+                                  selected: _difficulty == e.value,
                                   compact: !isTall,
-                                  onTap: () => setState(() => _difficulty = d),
+                                  dark: true,
+                                  onTap: () =>
+                                      setState(() => _difficulty = e.value),
                                 ),
                               ),
                             );
                           }).toList(),
                         ),
                         SizedBox(height: sectionGap),
-                        // Start button
+                        // Start
                         SizedBox(
-                          width: isWide ? 280 : 220,
+                          width: double.infinity,
                           height: 56,
                           child: ElevatedButton(
                             onPressed: _startGame,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: const Color(0xFFB22222),
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              elevation: 4,
                             ),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.play_arrow_rounded, size: 28),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    'Start Game',
-                                    style: GoogleFonts.fredoka(
-                                      fontSize: isWide ? 22 : 18,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                const Text('⚔️',
+                                    style: TextStyle(fontSize: 22)),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Defend!',
+                                  style: GoogleFonts.fredoka(fontSize: 22),
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: 8),
                                 _keyBadge('Enter', Colors.white),
                               ],
                             ),
@@ -622,7 +664,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
 
   Widget _buildGame() {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: _bgTop,
       body: KeyboardListener(
         focusNode: _gameFocusNode,
         autofocus: true,
@@ -632,13 +674,9 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
           child: SafeArea(
             child: Column(
               children: [
-                // Top bar
                 _buildTopBar(),
-                // Input area (top for visibility during touch typing)
                 _buildInputArea(),
-                // Game area
                 Expanded(child: _buildGameArea()),
-                const SizedBox(height: 4),
               ],
             ),
           ),
@@ -648,34 +686,35 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   }
 
   Widget _buildTopBar() {
+    // Health bar color
+    final healthColor = _templeHealth > 0.5
+        ? const Color(0xFF66BB6A)
+        : _templeHealth > 0.25
+        ? const Color(0xFFFFA726)
+        : const Color(0xFFEF5350);
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.black38,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: Colors.white12),
       ),
       child: Row(
         children: [
-          // Close button
+          // Close
           InkWell(
             onTap: _showQuitDialog,
             borderRadius: BorderRadius.circular(8),
             child: const Padding(
               padding: EdgeInsets.all(4),
-              child: Icon(Icons.close_rounded, size: 22, color: AppColors.textSecondary),
+              child: Icon(Icons.close_rounded, size: 22, color: Colors.white54),
             ),
           ),
           const SizedBox(width: 8),
           // Score
-          Text('⭐', style: const TextStyle(fontSize: 20)),
+          const Text('⭐', style: TextStyle(fontSize: 20)),
           const SizedBox(width: 4),
           Text(
             '$_score',
@@ -685,44 +724,56 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
               color: AppColors.starFilled,
             ),
           ),
-          const Spacer(),
-          // Lives
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(_startLives, (i) {
-              final alive = i < _lives;
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 1),
-                child: Icon(
-                  alive
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  color: alive ? AppColors.incorrect : Colors.grey.shade300,
-                  size: 22,
+          const SizedBox(width: 16),
+          // Temple health bar
+          const Text('🏯', style: TextStyle(fontSize: 16)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Container(
+              height: 14,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(7),
+                color: Colors.black38,
+                border: Border.all(color: Colors.white24),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: AnimatedFractionallySizedBox(
+                  duration: const Duration(milliseconds: 300),
+                  alignment: Alignment.centerLeft,
+                  widthFactor: _templeHealth,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [healthColor, healthColor.withValues(alpha: 0.7)],
+                      ),
+                    ),
+                  ),
                 ),
-              );
-            }),
+              ),
+            ),
           ),
-          const Spacer(),
+          const SizedBox(width: 12),
           // Streak
           if (_streak > 1) ...[
-            Text('🔥', style: const TextStyle(fontSize: 18)),
+            const Text('⚔️', style: TextStyle(fontSize: 16)),
             const SizedBox(width: 2),
             Text(
               '$_streak',
               style: GoogleFonts.fredoka(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppColors.secondary,
+                color: const Color(0xFFFF6B6B),
               ),
             ),
             const SizedBox(width: 12),
           ],
-          // Difficulty label
+          // Difficulty
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.12),
+              color: const Color(0xFFB22222).withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -730,7 +781,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
               style: GoogleFonts.nunito(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: AppColors.primary,
+                color: const Color(0xFFFF6B6B),
               ),
             ),
           ),
@@ -744,52 +795,204 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
       builder: (context, constraints) {
         final areaW = constraints.maxWidth;
         final areaH = constraints.maxHeight;
-        // Update stored height so speed scales with available space
         _gameAreaHeight = areaH;
 
-        return Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            // Ground line
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                height: 3,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.incorrect.withValues(alpha: 0.0),
-                      AppColors.incorrect.withValues(alpha: 0.5),
-                      AppColors.incorrect.withValues(alpha: 0.0),
-                    ],
-                  ),
-                ),
-              ),
+        final templeHeight = areaH * _templeHeightFrac;
+
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [_bgTop, _bgMid, _bgBottom],
+              stops: [0.0, 0.5, 1.0],
             ),
-            // Falling words
-            for (final w in _words) _buildWordBubble(w, areaW, areaH),
-            // Ghost feedback indicators
-            for (final g in _ghosts) _buildGhostIndicator(g, areaW, areaH),
-            // Empty state hint
-            if (_words.isEmpty)
-              Center(
-                child: Text(
-                  'Get ready...',
-                  style: GoogleFonts.fredoka(
-                    fontSize: 24,
-                    color: AppColors.textSecondary.withValues(alpha: 0.4),
+          ),
+          child: Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              // Sky background elements
+              ..._buildSkyBackground(areaW, areaH),
+              // Temple at bottom
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: templeHeight,
+                child: _buildTemple(templeHeight),
+              ),
+              // Demons
+              for (final d in _demons)
+                _buildDemonWidget(d, areaW, areaH),
+              // Trishul projectiles
+              for (final t in _trishuls)
+                _buildTrishul(t, areaW, areaH),
+              // Ghost indicators
+              for (final g in _ghosts)
+                _buildGhostIndicator(g, areaW, areaH),
+              // Empty hint
+              if (_demons.isEmpty && _ghosts.isEmpty)
+                Center(
+                  child: Text(
+                    'Demons approaching...',
+                    style: GoogleFonts.fredoka(
+                      fontSize: 24,
+                      color: Colors.white24,
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         );
       },
     );
   }
 
-  // Responsive font scale for game area
+  List<Widget> _buildSkyBackground(double w, double h) {
+    final rng = Random(42);
+    final widgets = <Widget>[];
+
+    // ── Distant mountains silhouette ──
+    widgets.add(
+      Positioned(
+        left: 0,
+        right: 0,
+        bottom: h * _templeHeightFrac - 2,
+        height: h * 0.18,
+        child: CustomPaint(
+          size: Size(w, h * 0.18),
+          painter: _MountainPainter(),
+        ),
+      ),
+    );
+
+    // ── Moon ──
+    widgets.add(
+      Positioned(
+        right: w * 0.12,
+        top: h * 0.06,
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFFFFF8E1).withValues(alpha: 0.85),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFFF8E1).withValues(alpha: 0.2),
+                blurRadius: 30,
+                spreadRadius: 10,
+              ),
+              BoxShadow(
+                color: const Color(0xFFFFD54F).withValues(alpha: 0.08),
+                blurRadius: 60,
+                spreadRadius: 25,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    // Moon crater shadow (crescent effect)
+    widgets.add(
+      Positioned(
+        right: w * 0.12 + 6,
+        top: h * 0.06 - 2,
+        child: Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _bgTop,
+          ),
+        ),
+      ),
+    );
+
+    // ── Stars — lots of them with varying sizes and brightness ──
+    for (var i = 0; i < 50; i++) {
+      final x = rng.nextDouble() * w;
+      final y = rng.nextDouble() * (h * 0.65);
+      final size = rng.nextDouble() * 2.5 + 0.5;
+      final brightness = rng.nextDouble() * 0.6 + 0.15;
+      final isBright = i < 8; // first 8 are brighter "feature" stars
+
+      widgets.add(
+        Positioned(
+          left: x,
+          top: y,
+          child: Container(
+            width: isBright ? size + 1.5 : size,
+            height: isBright ? size + 1.5 : size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isBright
+                  ? const Color(0xFFFFF8E1).withValues(alpha: brightness + 0.2)
+                  : Colors.white.withValues(alpha: brightness),
+              boxShadow: isBright
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFFBBDEFB).withValues(alpha: 0.3),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      ),
+                    ]
+                  : null,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ── Fog / mist layer above the temple ──
+    widgets.add(
+      Positioned(
+        left: 0,
+        right: 0,
+        bottom: h * _templeHeightFrac - 6,
+        height: h * 0.08,
+        child: IgnorePointer(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  const Color(0xFF1E1250).withValues(alpha: 0.4),
+                  const Color(0xFF2A1860).withValues(alpha: 0.2),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return widgets;
+  }
+
+  Widget _buildTemple(double height) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: _templeDamageFlash
+                ? const Color(0xFFFF5252)
+                : const Color(0xFFFFD700).withValues(alpha: 0.6),
+            width: 2,
+          ),
+        ),
+      ),
+      child: CustomPaint(
+        size: Size(double.infinity, height),
+        painter: _PagodaPainter(damageFlash: _templeDamageFlash),
+      ),
+    );
+  }
+
+  // Responsive font scale
   double get _wordFontSize {
     final w = MediaQuery.of(context).size.width;
     if (w > 1200) return 28;
@@ -804,85 +1007,129 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     return 22;
   }
 
-  Widget _buildWordBubble(_FallingWord word, double areaW, double areaH) {
-    final isTarget = word == _target;
-    final color = _bubbleColors[word.colorIndex];
+  Widget _buildDemonWidget(
+      _DemonWord demon, double areaW, double areaH) {
+    final isTarget = demon == _target;
+    final color = _demonColors[demon.colorIndex];
     final fontSize = _wordFontSize;
 
-    // Estimate width to clamp x
-    final estWidth = word.word.length * (fontSize * 0.7) + 32;
+    final estWidth = demon.word.length * (fontSize * 0.7) + 60;
     final maxLeft = (areaW - estWidth).clamp(0.0, double.infinity);
-    final left = (word.x * areaW).clamp(0.0, maxLeft);
-    final top = word.y * areaH;
+    final left = (demon.x * areaW).clamp(0.0, maxLeft);
+    final top = demon.y * areaH;
 
     return Positioned(
       left: left,
       top: top,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        padding: EdgeInsets.symmetric(
-          horizontal: fontSize * 0.7,
-          vertical: fontSize * 0.4,
-        ),
-        decoration: BoxDecoration(
-          color: isTarget ? color : color.withValues(alpha: 0.85),
-          borderRadius: BorderRadius.circular(14),
-          border: isTarget
-              ? Border.all(
-                  color: _input.isEmpty
-                      ? AppColors.starFilled
-                      : word.word.startsWith(_input)
-                      ? const Color(0xFF00E676)
-                      : const Color(0xFFFF5252),
-                  width: 2.5,
-                )
-              : (_input.isNotEmpty && _target == null)
-              ? Border.all(
-                  color: const Color(0xFFFF5252).withValues(alpha: 0.7),
-                  width: 2,
-                )
-              : null,
-          boxShadow: isTarget
-              ? [
-                  BoxShadow(
-                    color:
-                        (_input.isEmpty
-                                ? AppColors.starFilled
-                                : word.word.startsWith(_input)
-                                ? const Color(0xFF00E676)
-                                : const Color(0xFFFF5252))
-                            .withValues(alpha: 0.5),
-                    blurRadius: 14,
-                    spreadRadius: 2,
-                  ),
-                ]
-              : (_input.isNotEmpty && _target == null)
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFFFF5252).withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    spreadRadius: 1,
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.3),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-        ),
-        child: isTarget && _input.isNotEmpty
-            ? _buildPartialMatch(word.word, _input, fontSize)
-            : Text(
-                word.word,
-                style: GoogleFonts.fredoka(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Word (above the demon)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: EdgeInsets.symmetric(
+              horizontal: fontSize * 0.6,
+              vertical: fontSize * 0.3,
+            ),
+            decoration: BoxDecoration(
+              color: isTarget ? color : color.withValues(alpha: 0.8),
+              borderRadius: BorderRadius.circular(10),
+              border: isTarget
+                  ? Border.all(
+                      color: _input.isEmpty
+                          ? const Color(0xFFFFD700)
+                          : demon.word.startsWith(_input)
+                          ? const Color(0xFF00E676)
+                          : const Color(0xFFFF5252),
+                      width: 2.5,
+                    )
+                  : (_input.isNotEmpty && _target == null)
+                  ? Border.all(
+                      color: const Color(0xFFFF5252).withValues(alpha: 0.6),
+                      width: 2,
+                    )
+                  : Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+              boxShadow: [
+                BoxShadow(
+                  color: isTarget
+                      ? (_input.isEmpty
+                              ? const Color(0xFFFFD700)
+                              : demon.word.startsWith(_input)
+                              ? const Color(0xFF00E676)
+                              : const Color(0xFFFF5252))
+                          .withValues(alpha: 0.5)
+                      : color.withValues(alpha: 0.4),
+                  blurRadius: isTarget ? 14 : 6,
+                  spreadRadius: isTarget ? 2 : 0,
                 ),
-              ),
+              ],
+            ),
+            child: isTarget && _input.isNotEmpty
+                ? _buildPartialMatch(demon.word, _input, fontSize)
+                : Text(
+                    demon.word,
+                    style: GoogleFonts.fredoka(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 2),
+          // Demon emoji (below the word)
+          Text(
+            '👹',
+            style: TextStyle(
+              fontSize: fontSize * 2.5,
+              shadows: [
+                Shadow(
+                  color: color.withValues(alpha: 0.8),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildTrishul(_Trishul t, double areaW, double areaH) {
+    final startX = areaW / 2;
+    final startY = areaH * (1.0 - _templeHeightFrac * 0.3);
+    final endX = t.targetX * areaW;
+    // Offset down to hit the demon emoji (below the word label)
+    final demonOffset = _wordFontSize * 2.2;
+    final endY = t.targetY * areaH + demonOffset;
+
+    // Angle from start to end so the trishul points at the demon
+    final dx = endX - startX;
+    final dy = endY - startY;
+    final angle = atan2(dy, dx) + pi / 2; // +90 deg because 🔱 points up
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: _Trishul.duration,
+      builder: (context, p, child) {
+        final eased = 1.0 - (1.0 - p) * (1.0 - p);
+        final cx = startX + (endX - startX) * eased;
+        final cy = startY + (endY - startY) * eased;
+
+        return Positioned(
+          left: cx - 18,
+          top: cy - 18,
+          child: Opacity(
+            opacity: p < 0.85 ? 1.0 : ((1.0 - p) / 0.15).clamp(0.0, 1.0),
+            child: Transform.rotate(
+              angle: angle,
+              child: const Text('🔱', style: TextStyle(fontSize: 36)),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -902,7 +1149,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                   : const Color(0xFFFF5252),
               shadows: [
                 Shadow(
-                  color: Colors.black.withValues(alpha: 0.3),
+                  color: Colors.black.withValues(alpha: 0.4),
                   blurRadius: 2,
                 ),
               ],
@@ -923,15 +1170,10 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
 
   Widget _buildGhostIndicator(_Ghost ghost, double areaW, double areaH) {
     final fontSize = _wordFontSize;
-    final estWidth = ghost.word.length * (fontSize * 0.7) + 48;
+    final estWidth = ghost.word.length * (fontSize * 0.7) + 60;
     final maxLeft = (areaW - estWidth).clamp(0.0, double.infinity);
     final left = (ghost.x * areaW).clamp(0.0, maxLeft);
     final top = ghost.y * areaH;
-
-    final color = ghost.success
-        ? const Color(0xFF00E676)
-        : const Color(0xFFFF5252);
-    final icon = ghost.success ? Icons.check_circle : Icons.cancel;
 
     return Positioned(
       left: left,
@@ -948,31 +1190,25 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
             ),
           );
         },
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: fontSize * 0.5,
-            vertical: fontSize * 0.3,
-          ),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.25),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color, width: 2),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: fontSize * 0.9),
-              const SizedBox(width: 4),
-              Text(
-                ghost.word,
-                style: GoogleFonts.fredoka(
-                  fontSize: fontSize * 0.85,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              ghost.success ? '💥' : '💀',
+              style: TextStyle(fontSize: fontSize * 0.9),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              ghost.word,
+              style: GoogleFonts.fredoka(
+                fontSize: fontSize * 0.85,
+                fontWeight: FontWeight.w600,
+                color: ghost.success
+                    ? const Color(0xFF00E676)
+                    : const Color(0xFFFF5252),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -984,20 +1220,19 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     final noMatch = hasInput && !hasMatch;
     final fontSize = _inputFontSize;
 
-    // Flash feedback colors
-    Color bgColor = Colors.white;
+    Color bgColor = Colors.black38;
     Color borderColor = noMatch
         ? AppColors.incorrect.withValues(alpha: 0.6)
         : hasMatch
-        ? AppColors.primary.withValues(alpha: 0.6)
-        : Colors.grey.shade300;
+        ? const Color(0xFF00E676).withValues(alpha: 0.6)
+        : Colors.white24;
 
     if (_flash == _FlashType.correct) {
-      bgColor = const Color(0xFFE8F5E9); // light green bg
-      borderColor = AppColors.correct;
+      bgColor = const Color(0xFF00E676).withValues(alpha: 0.15);
+      borderColor = const Color(0xFF00E676);
     } else if (_flash == _FlashType.wrong) {
-      bgColor = const Color(0xFFFFEBEE); // light red bg
-      borderColor = AppColors.incorrect;
+      bgColor = const Color(0xFFFF5252).withValues(alpha: 0.15);
+      borderColor = const Color(0xFFFF5252);
     }
 
     return AnimatedContainer(
@@ -1011,26 +1246,6 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
         color: bgColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor, width: _flash != null ? 3 : 2),
-        boxShadow: [
-          if (_flash == _FlashType.correct)
-            BoxShadow(
-              color: AppColors.correct.withValues(alpha: 0.3),
-              blurRadius: 12,
-              spreadRadius: 2,
-            )
-          else if (_flash == _FlashType.wrong)
-            BoxShadow(
-              color: AppColors.incorrect.withValues(alpha: 0.3),
-              blurRadius: 12,
-              spreadRadius: 2,
-            )
-          else
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-        ],
       ),
       child: Row(
         children: [
@@ -1041,36 +1256,36 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                 ? Icons.cancel_rounded
                 : Icons.keyboard_rounded,
             color: _flash == _FlashType.correct
-                ? AppColors.correct
+                ? const Color(0xFF00E676)
                 : _flash == _FlashType.wrong
-                ? AppColors.incorrect
+                ? const Color(0xFFFF5252)
                 : hasInput
-                ? AppColors.primary
-                : Colors.grey.shade400,
+                ? const Color(0xFFFFD700)
+                : Colors.white38,
             size: fontSize,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               _flash == _FlashType.correct
-                  ? '✓ Nice!'
+                  ? '💥 Slain!'
                   : _flash == _FlashType.wrong
                   ? '✗ No match'
                   : hasInput
                   ? _input
-                  : 'Start typing...',
+                  : 'Type to attack...',
               style: GoogleFonts.fredoka(
                 fontSize: fontSize,
                 fontWeight: FontWeight.w500,
                 color: _flash == _FlashType.correct
-                    ? AppColors.correct
+                    ? const Color(0xFF00E676)
                     : _flash == _FlashType.wrong
-                    ? AppColors.incorrect
+                    ? const Color(0xFFFF5252)
                     : noMatch
-                    ? AppColors.incorrect
+                    ? const Color(0xFFFF5252)
                     : hasInput
-                    ? AppColors.textPrimary
-                    : Colors.grey.shade400,
+                    ? Colors.white
+                    : Colors.white38,
               ),
             ),
           ),
@@ -1081,16 +1296,13 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                 style: GoogleFonts.robotoMono(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.incorrect.withValues(alpha: 0.6),
+                  color: const Color(0xFFFF5252).withValues(alpha: 0.6),
                 ),
               ),
             const SizedBox(width: 6),
             Text(
               '⌫',
-              style: TextStyle(
-                fontSize: fontSize * 0.8,
-                color: Colors.grey.shade400,
-              ),
+              style: TextStyle(fontSize: fontSize * 0.8, color: Colors.white38),
             ),
           ],
         ],
@@ -1129,7 +1341,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
         .padLeft(2, '0');
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _bgTop,
       body: KeyboardListener(
         focusNode: _overFocusNode,
         autofocus: true,
@@ -1161,14 +1373,14 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                     constraints: BoxConstraints(maxWidth: maxW),
                     child: Column(
                       children: [
-                        Text('🎮', style: TextStyle(fontSize: emojiSize)),
+                        Text('💀', style: TextStyle(fontSize: emojiSize)),
                         SizedBox(height: isTall ? 8 : 4),
                         Text(
-                          'Game Over!',
+                          'Temple Fallen!',
                           style: GoogleFonts.fredoka(
                             fontSize: headerFontSize,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.accent,
+                            color: const Color(0xFFFF6B6B),
                           ),
                         ),
                         SizedBox(height: sectionGap),
@@ -1180,14 +1392,12 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                             gradient: LinearGradient(
                               colors: [
                                 AppColors.starFilled.withValues(alpha: 0.15),
-                                AppColors.secondary.withValues(alpha: 0.15),
+                                const Color(0xFFB22222).withValues(alpha: 0.15),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: AppColors.starFilled.withValues(
-                                alpha: 0.4,
-                              ),
+                              color: AppColors.starFilled.withValues(alpha: 0.4),
                             ),
                           ),
                           child: Column(
@@ -1200,7 +1410,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                                     style: GoogleFonts.fredoka(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.accent,
+                                      color: const Color(0xFFFFD700),
                                     ),
                                   ),
                                 ),
@@ -1217,7 +1427,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                                 style: GoogleFonts.nunito(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary,
+                                  color: Colors.white60,
                                 ),
                               ),
                               if (!_isNewHighScore && _highScore > 0)
@@ -1228,7 +1438,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                                     style: GoogleFonts.nunito(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textSecondary,
+                                      color: Colors.white54,
                                     ),
                                   ),
                                 ),
@@ -1236,19 +1446,19 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                           ),
                         ),
                         SizedBox(height: sectionGap),
-                        // Stats grid
+                        // Stats
                         Row(
                           children: [
                             _OverStat(
-                              emoji: '✅',
-                              label: 'Words',
-                              value: '$_wordsDestroyed',
+                              emoji: '💥',
+                              label: 'Slain',
+                              value: '$_demonsSlain',
                             ),
                             const SizedBox(width: 12),
                             _OverStat(
-                              emoji: '❌',
-                              label: 'Missed',
-                              value: '$_wordsMissed',
+                              emoji: '💀',
+                              label: 'Reached',
+                              value: '$_demonsReached',
                             ),
                           ],
                         ),
@@ -1256,7 +1466,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                         Row(
                           children: [
                             _OverStat(
-                              emoji: '🔥',
+                              emoji: '⚔️',
                               label: 'Best Streak',
                               value: '$_bestStreak',
                             ),
@@ -1276,7 +1486,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                           child: ElevatedButton(
                             onPressed: _playAgain,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: const Color(0xFFB22222),
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
@@ -1288,7 +1498,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                                 const Icon(Icons.replay_rounded, size: 24),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Play Again',
+                                  'Defend Again',
                                   style: GoogleFonts.fredoka(fontSize: 20),
                                 ),
                                 const SizedBox(width: 8),
@@ -1309,11 +1519,11 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
                                 style: GoogleFonts.fredoka(fontSize: 16),
                               ),
                               const SizedBox(width: 6),
-                              _keyBadge('Esc', AppColors.textSecondary),
+                              _keyBadge('Esc', Colors.white70),
                             ],
                           ),
                           style: TextButton.styleFrom(
-                            foregroundColor: AppColors.textSecondary,
+                            foregroundColor: Colors.white70,
                           ),
                         ),
                       ],
@@ -1351,6 +1561,325 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Pagoda painter
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MountainPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+
+    // Far mountains (lighter, behind)
+    final farPaint = Paint()..color = const Color(0xFF0D0825);
+    final far = Path()
+      ..moveTo(0, h)
+      ..lineTo(0, h * 0.7)
+      ..lineTo(w * 0.10, h * 0.35)
+      ..lineTo(w * 0.22, h * 0.55)
+      ..lineTo(w * 0.35, h * 0.20)
+      ..lineTo(w * 0.48, h * 0.50)
+      ..lineTo(w * 0.55, h * 0.30)
+      ..lineTo(w * 0.65, h * 0.15)
+      ..lineTo(w * 0.75, h * 0.45)
+      ..lineTo(w * 0.85, h * 0.25)
+      ..lineTo(w * 0.95, h * 0.50)
+      ..lineTo(w, h * 0.60)
+      ..lineTo(w, h)
+      ..close();
+    canvas.drawPath(far, farPaint);
+
+    // Near mountains (darker, in front)
+    final nearPaint = Paint()..color = const Color(0xFF0A0620);
+    final near = Path()
+      ..moveTo(0, h)
+      ..lineTo(0, h * 0.65)
+      ..lineTo(w * 0.08, h * 0.50)
+      ..lineTo(w * 0.18, h * 0.70)
+      ..lineTo(w * 0.30, h * 0.40)
+      ..lineTo(w * 0.42, h * 0.65)
+      ..lineTo(w * 0.52, h * 0.45)
+      ..lineTo(w * 0.60, h * 0.60)
+      ..lineTo(w * 0.72, h * 0.35)
+      ..lineTo(w * 0.82, h * 0.55)
+      ..lineTo(w * 0.92, h * 0.40)
+      ..lineTo(w, h * 0.55)
+      ..lineTo(w, h)
+      ..close();
+    canvas.drawPath(near, nearPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
+}
+
+class _PagodaPainter extends CustomPainter {
+  final bool damageFlash;
+
+  _PagodaPainter({this.damageFlash = false});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final cx = w / 2;
+
+    // ── Palette ──
+    final wallColor =
+        damageFlash ? const Color(0xFF8B2020) : const Color(0xFF5C3A1E);
+    final roofColor =
+        damageFlash ? const Color(0xFFCC2020) : const Color(0xFF8B1A1A);
+    final roofAccent =
+        damageFlash ? const Color(0xFFFF4444) : const Color(0xFFD4AF37);
+    final grassDark = const Color(0xFF1B4332);
+    final grassLight = const Color(0xFF2D6A4F);
+    final treeTrunk = const Color(0xFF3E2723);
+    final treeLeaf = const Color(0xFF1B5E20);
+    final treeLeafLight = const Color(0xFF2E7D32);
+    final stoneColor = const Color(0xFF37474F);
+    final lanternGlow =
+        damageFlash ? const Color(0xFFFF4444) : const Color(0xFFFFAB00);
+
+    // ── Ground ──
+    // Dark earth base
+    canvas.drawRect(
+      Rect.fromLTWH(0, h * 0.78, w, h * 0.22),
+      Paint()..color = const Color(0xFF1A0F05),
+    );
+    // Grass layer
+    canvas.drawRect(
+      Rect.fromLTWH(0, h * 0.75, w, h * 0.08),
+      Paint()..color = grassDark,
+    );
+    // Grass highlights — small bumps across the width
+    final grassPath = Path()..moveTo(0, h * 0.76);
+    for (var x = 0.0; x < w; x += 8) {
+      grassPath.lineTo(x + 4, h * 0.73);
+      grassPath.lineTo(x + 8, h * 0.76);
+    }
+    grassPath.lineTo(w, h * 0.78);
+    grassPath.lineTo(0, h * 0.78);
+    grassPath.close();
+    canvas.drawPath(grassPath, Paint()..color = grassLight);
+
+    // ── Stone path to temple ──
+    final pathW = w * 0.08;
+    for (var i = 0; i < 4; i++) {
+      final sy = h * 0.80 + i * h * 0.05;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(cx - pathW / 2, sy, pathW, h * 0.03),
+          const Radius.circular(3),
+        ),
+        Paint()..color = stoneColor.withValues(alpha: 0.6 - i * 0.1),
+      );
+    }
+
+    // ── Trees ── (left and right sides)
+    void drawTree(double tx, double scale) {
+      final trunkW = 6.0 * scale;
+      final trunkH = h * 0.25 * scale;
+      final trunkTop = h * 0.75 - trunkH;
+
+      // Trunk
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(tx - trunkW / 2, trunkTop, trunkW, trunkH),
+          const Radius.circular(2),
+        ),
+        Paint()..color = treeTrunk,
+      );
+
+      // Foliage layers (3 triangles)
+      for (var i = 0; i < 3; i++) {
+        final layerW = (28.0 - i * 6) * scale;
+        final layerH = (18.0 - i * 2) * scale;
+        final layerY = trunkTop - i * layerH * 0.6;
+        final p = Path()
+          ..moveTo(tx - layerW / 2, layerY)
+          ..lineTo(tx, layerY - layerH)
+          ..lineTo(tx + layerW / 2, layerY)
+          ..close();
+        canvas.drawPath(p, Paint()..color = i.isEven ? treeLeaf : treeLeafLight);
+      }
+    }
+
+    // Left trees
+    drawTree(w * 0.06, 0.8);
+    drawTree(w * 0.15, 1.0);
+    drawTree(w * 0.24, 0.7);
+    // Right trees
+    drawTree(w * 0.76, 0.7);
+    drawTree(w * 0.85, 1.0);
+    drawTree(w * 0.94, 0.8);
+
+    // ── Side shrines ── (small pagodas on left and right)
+    void drawShrine(double sx) {
+      final sw = w * 0.08;
+      final sh = h * 0.25;
+      final sTop = h * 0.75 - sh;
+
+      // Body
+      canvas.drawRect(
+        Rect.fromLTWH(sx - sw / 2, sTop + sh * 0.4, sw, sh * 0.6),
+        Paint()..color = wallColor.withValues(alpha: 0.8),
+      );
+      // Door
+      canvas.drawRRect(
+        RRect.fromRectAndCorners(
+          Rect.fromLTWH(sx - sw * 0.15, sTop + sh * 0.6, sw * 0.3, sh * 0.4),
+          topLeft: const Radius.circular(6),
+          topRight: const Radius.circular(6),
+        ),
+        Paint()..color = const Color(0xFF0A0505),
+      );
+      // Roof
+      final rp = Path()
+        ..moveTo(sx - sw * 0.7, sTop + sh * 0.4)
+        ..lineTo(sx, sTop + sh * 0.15)
+        ..lineTo(sx + sw * 0.7, sTop + sh * 0.4)
+        ..close();
+      canvas.drawPath(rp, Paint()..color = roofColor);
+      canvas.drawPath(
+        rp,
+        Paint()
+          ..color = roofAccent
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1,
+      );
+    }
+
+    drawShrine(w * 0.30);
+    drawShrine(w * 0.70);
+
+    // ── Lanterns ── (stone posts with glowing tops)
+    void drawLantern(double lx) {
+      final postH = h * 0.12;
+      final postTop = h * 0.75 - postH;
+      // Post
+      canvas.drawRect(
+        Rect.fromLTWH(lx - 2, postTop, 4, postH),
+        Paint()..color = stoneColor,
+      );
+      // Glow
+      canvas.drawCircle(
+        Offset(lx, postTop - 2),
+        5,
+        Paint()..color = lanternGlow.withValues(alpha: 0.7),
+      );
+      canvas.drawCircle(
+        Offset(lx, postTop - 2),
+        10,
+        Paint()
+          ..color = lanternGlow.withValues(alpha: 0.15)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+      );
+    }
+
+    drawLantern(w * 0.38);
+    drawLantern(w * 0.62);
+
+    // ── Main Pagoda Temple (center) ──
+    final bodyW = w * 0.22;
+    final bodyH = h * 0.35;
+    final bodyTop = h * 0.75 - bodyH;
+    final bodyL = cx - bodyW / 2;
+
+    // Temple body
+    canvas.drawRect(
+      Rect.fromLTWH(bodyL, bodyTop + bodyH * 0.35, bodyW, bodyH * 0.65),
+      Paint()..color = wallColor,
+    );
+
+    // Pillars
+    final pillarW = bodyW * 0.06;
+    for (final px in [bodyL + bodyW * 0.15, bodyL + bodyW * 0.85 - pillarW]) {
+      canvas.drawRect(
+        Rect.fromLTWH(px, bodyTop + bodyH * 0.38, pillarW, bodyH * 0.6),
+        Paint()..color = roofAccent.withValues(alpha: 0.4),
+      );
+    }
+
+    // Door
+    final doorW = bodyW * 0.25;
+    final doorH = bodyH * 0.35;
+    canvas.drawRRect(
+      RRect.fromRectAndCorners(
+        Rect.fromLTWH(cx - doorW / 2, bodyTop + bodyH - doorH, doorW, doorH),
+        topLeft: const Radius.circular(10),
+        topRight: const Radius.circular(10),
+      ),
+      Paint()..color = const Color(0xFF0A0505),
+    );
+    // Door glow
+    canvas.drawRRect(
+      RRect.fromRectAndCorners(
+        Rect.fromLTWH(cx - doorW / 2, bodyTop + bodyH - doorH, doorW, doorH),
+        topLeft: const Radius.circular(10),
+        topRight: const Radius.circular(10),
+      ),
+      Paint()
+        ..color = lanternGlow.withValues(alpha: 0.08)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+    );
+
+    // Roof tiers (3 levels)
+    for (var i = 0; i < 3; i++) {
+      final tierScale = 1.0 - i * 0.25;
+      final tierW = (bodyW + 30) * tierScale;
+      final tierH = bodyH * 0.1;
+      final tierY = bodyTop + bodyH * 0.32 - i * tierH * 1.4;
+
+      final path = Path()
+        ..moveTo(cx - tierW / 2 - 8, tierY + tierH)
+        ..quadraticBezierTo(cx - tierW / 2 - 14, tierY + tierH - 4,
+            cx - tierW * 0.35, tierY)
+        ..lineTo(cx + tierW * 0.35, tierY)
+        ..quadraticBezierTo(
+            cx + tierW / 2 + 14, tierY + tierH - 4,
+            cx + tierW / 2 + 8, tierY + tierH)
+        ..close();
+      canvas.drawPath(path, Paint()..color = roofColor);
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = roofAccent
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2,
+      );
+    }
+
+    // Spire
+    final spireBase = bodyTop + bodyH * 0.32 - 3 * (bodyH * 0.1) * 1.4;
+    final spireTop = spireBase - h * 0.06;
+    canvas.drawLine(
+      Offset(cx, spireTop),
+      Offset(cx, spireBase + 4),
+      Paint()
+        ..color = roofAccent
+        ..strokeWidth = 2.5,
+    );
+    canvas.drawCircle(
+      Offset(cx, spireTop),
+      4,
+      Paint()..color = roofAccent,
+    );
+    // Spire glow
+    canvas.drawCircle(
+      Offset(cx, spireTop),
+      8,
+      Paint()
+        ..color = lanternGlow.withValues(alpha: 0.15)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _PagodaPainter old) =>
+      damageFlash != old.damageFlash;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Extracted widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1359,6 +1888,7 @@ class _DifficultyCard extends StatelessWidget {
   final int index;
   final bool selected;
   final bool compact;
+  final bool dark;
   final VoidCallback onTap;
 
   const _DifficultyCard({
@@ -1366,6 +1896,7 @@ class _DifficultyCard extends StatelessWidget {
     required this.index,
     required this.selected,
     this.compact = false,
+    this.dark = false,
     required this.onTap,
   });
 
@@ -1376,6 +1907,8 @@ class _DifficultyCard extends StatelessWidget {
     final labelSize = compact ? 14.0 : 16.0;
     final descSize = compact ? 10.0 : 11.0;
 
+    final accentColor = const Color(0xFFB22222);
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -1383,17 +1916,19 @@ class _DifficultyCard extends StatelessWidget {
         padding: EdgeInsets.symmetric(vertical: vPad, horizontal: 8),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.primary.withValues(alpha: 0.12)
+              ? accentColor.withValues(alpha: 0.2)
+              : dark
+              ? Colors.white.withValues(alpha: 0.05)
               : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? AppColors.primary : Colors.grey.shade300,
+            color: selected ? accentColor : Colors.white24,
             width: selected ? 2.5 : 1,
           ),
           boxShadow: selected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.15),
+                    color: accentColor.withValues(alpha: 0.25),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -1409,7 +1944,7 @@ class _DifficultyCard extends StatelessWidget {
               style: GoogleFonts.fredoka(
                 fontSize: labelSize,
                 fontWeight: FontWeight.w600,
-                color: selected ? AppColors.primary : AppColors.textPrimary,
+                color: selected ? accentColor : Colors.white70,
               ),
             ),
             if (!compact) ...[
@@ -1418,7 +1953,7 @@ class _DifficultyCard extends StatelessWidget {
                 difficulty.description,
                 style: GoogleFonts.nunito(
                   fontSize: descSize,
-                  color: AppColors.textSecondary,
+                  color: Colors.white38,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -1427,18 +1962,16 @@ class _DifficultyCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
+                color: accentColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                ),
+                border: Border.all(color: accentColor.withValues(alpha: 0.3)),
               ),
               child: Text(
                 '$index',
                 style: GoogleFonts.robotoMono(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+                  color: accentColor,
                 ),
               ),
             ),
@@ -1466,9 +1999,9 @@ class _OverStat extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: Colors.white12),
         ),
         child: Column(
           children: [
@@ -1479,14 +2012,14 @@ class _OverStat extends StatelessWidget {
               style: GoogleFonts.fredoka(
                 fontSize: 22,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: Colors.white,
               ),
             ),
             Text(
               label,
               style: GoogleFonts.nunito(
                 fontSize: 12,
-                color: AppColors.textSecondary,
+                color: Colors.white54,
               ),
             ),
           ],
@@ -1496,7 +2029,6 @@ class _OverStat extends StatelessWidget {
   }
 }
 
-/// Quit-game confirmation dialog with keyboard shortcuts.
 class _QuitDialog extends StatefulWidget {
   final VoidCallback onResume;
   final VoidCallback onQuit;
@@ -1554,17 +2086,15 @@ class _QuitDialogState extends State<_QuitDialog> {
       autofocus: true,
       onKeyEvent: _handleKey,
       child: AlertDialog(
+        backgroundColor: const Color(0xFF1A1040),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
-          'Quit Game?',
-          style: GoogleFonts.fredoka(
-            fontSize: 24,
-            color: AppColors.textPrimary,
-          ),
+          'Abandon Temple?',
+          style: GoogleFonts.fredoka(fontSize: 24, color: Colors.white),
         ),
         content: Text(
-          'Your current score will be lost.',
-          style: GoogleFonts.nunito(fontSize: 16),
+          'The demons will overrun the temple if you leave!',
+          style: GoogleFonts.nunito(fontSize: 16, color: Colors.white70),
         ),
         actions: [
           TextButton(
@@ -1573,10 +2103,10 @@ class _QuitDialogState extends State<_QuitDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Resume',
-                  style: GoogleFonts.fredoka(color: AppColors.primary),
+                  'Stay & Fight',
+                  style: GoogleFonts.fredoka(color: const Color(0xFF66BB6A)),
                 ),
-                _badge('Esc', AppColors.primary),
+                _badge('Esc', const Color(0xFF66BB6A)),
               ],
             ),
           ),
@@ -1586,10 +2116,10 @@ class _QuitDialogState extends State<_QuitDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Quit',
-                  style: GoogleFonts.fredoka(color: AppColors.incorrect),
+                  'Retreat',
+                  style: GoogleFonts.fredoka(color: const Color(0xFFFF6B6B)),
                 ),
-                _badge('Q', AppColors.incorrect),
+                _badge('Q', const Color(0xFFFF6B6B)),
               ],
             ),
           ),

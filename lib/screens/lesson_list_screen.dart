@@ -48,11 +48,24 @@ class _LessonListScreenState extends State<LessonListScreen> {
         focusNode: _focusNode,
         autofocus: true,
         onKeyEvent: _handleKeyEvent,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: LessonCurriculum.categoryOrder.map((category) {
-            return _CategorySection(category: category);
-          }).toList(),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final screenW = constraints.maxWidth;
+            final crossAxisCount = screenW > 1000
+                ? 3
+                : screenW > 650
+                ? 2
+                : 1;
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: LessonCurriculum.categoryOrder.map((category) {
+                return _CategorySection(
+                  category: category,
+                  crossAxisCount: crossAxisCount,
+                );
+              }).toList(),
+            );
+          },
         ),
       ),
     );
@@ -61,8 +74,12 @@ class _LessonListScreenState extends State<LessonListScreen> {
 
 class _CategorySection extends StatelessWidget {
   final LessonCategory category;
+  final int crossAxisCount;
 
-  const _CategorySection({required this.category});
+  const _CategorySection({
+    required this.category,
+    this.crossAxisCount = 1,
+  });
 
   Color get _categoryColor => switch (category) {
     LessonCategory.homeRow => AppColors.categoryHomeRow,
@@ -112,11 +129,26 @@ class _CategorySection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        // Lesson cards in a grid
-        ...lessons.map(
-          (lesson) =>
-              _LessonCard(lesson: lesson, categoryColor: _categoryColor),
-        ),
+        // Lesson cards — grid on wide screens, list on narrow
+        if (crossAxisCount > 1)
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: lessons.map((lesson) {
+              return FractionallySizedBox(
+                widthFactor: 1.0 / crossAxisCount - 0.01,
+                child: _LessonCard(
+                  lesson: lesson,
+                  categoryColor: _categoryColor,
+                ),
+              );
+            }).toList(),
+          )
+        else
+          ...lessons.map(
+            (lesson) =>
+                _LessonCard(lesson: lesson, categoryColor: _categoryColor),
+          ),
         const SizedBox(height: 16),
       ],
     );

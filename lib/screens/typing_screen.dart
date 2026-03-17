@@ -397,6 +397,8 @@ class _TypingScreenState extends State<TypingScreen> {
 
                 // Text size scales with key size — generous for readability
                 final textFontSize = (keySize * 0.9).clamp(22.0, 48.0);
+                final isShort = maxH < 550;
+                final vPad = isShort ? 4.0 : 8.0;
 
                 return Column(
                   children: [
@@ -404,13 +406,14 @@ class _TypingScreenState extends State<TypingScreen> {
                     Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: horizontalPad,
-                        vertical: 8,
+                        vertical: vPad,
                       ),
                       child: _buildLiveStats(),
                     ),
-                    // Finger guide
-                    FingerGuide(currentKey: _typingProvider.currentChar),
-                    const SizedBox(height: 8),
+                    // Finger guide (compact on short screens)
+                    if (!isShort)
+                      FingerGuide(currentKey: _typingProvider.currentChar),
+                    SizedBox(height: isShort ? 2 : 8),
                     // Text to type — takes available remaining space
                     Expanded(
                       child: Padding(
@@ -430,7 +433,7 @@ class _TypingScreenState extends State<TypingScreen> {
                     // "Click here to type" prompt
                     if (!_focusNode.hasFocus)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.only(bottom: 4),
                         child: _buildFocusPrompt(),
                       ),
                     // Virtual keyboard — pinned to bottom
@@ -438,7 +441,7 @@ class _TypingScreenState extends State<TypingScreen> {
                       padding: EdgeInsets.only(
                         left: horizontalPad,
                         right: horizontalPad,
-                        bottom: 12,
+                        bottom: isShort ? 4 : 12,
                       ),
                       child: Center(
                         child: KeyboardWidget(

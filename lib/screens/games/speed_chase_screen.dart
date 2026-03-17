@@ -57,22 +57,34 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
   final _sfx = SoundManager();
 
   // ── Difficulty Config ──
+
+  /// Adaptive ghost speed: starts gentle, ramps on correct, dips on error.
+  double _adaptiveSpeed = 0.55;
+
+  void _onCorrectAdaptive() {
+    _adaptiveSpeed = (_adaptiveSpeed + 0.05).clamp(0.4, 1.4);
+  }
+
+  void _onErrorAdaptive() {
+    _adaptiveSpeed = (_adaptiveSpeed - 0.07).clamp(0.4, 1.4);
+  }
+
   int get _wordCount => switch (_difficulty) {
     ContentDifficulty.easy => 15,
-    ContentDifficulty.medium => 20,
-    ContentDifficulty.hard => 25,
+    ContentDifficulty.medium => 18,
+    ContentDifficulty.hard => 22,
   };
 
   int get _gameDuration => switch (_difficulty) {
     ContentDifficulty.easy => 60,
-    ContentDifficulty.medium => 90,
-    ContentDifficulty.hard => 120,
+    ContentDifficulty.medium => 100,
+    ContentDifficulty.hard => 140,
   };
 
-  double get _ghostSpeed => switch (_difficulty) {
+  double get _ghostSpeed => _adaptiveSpeed * switch (_difficulty) {
     ContentDifficulty.easy => 0.010,
-    ContentDifficulty.medium => 0.013,
-    ContentDifficulty.hard => 0.015,
+    ContentDifficulty.medium => 0.010,
+    ContentDifficulty.hard => 0.010,
   };
 
   @override
@@ -109,6 +121,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
     _remainingSeconds = _gameDuration;
     _totalSeconds = _gameDuration;
     _ghostProgress = 0;
+    _adaptiveSpeed = 0.55;
     _phase = _Phase.playing;
     _sfx.playGameStart();
     setState(() {});
@@ -171,6 +184,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
       _score += target.length * 10 + (_remainingSeconds * 2);
       _currentIndex++;
       _input = '';
+      _onCorrectAdaptive();
       _sfx.playPop();
       if (_currentIndex >= _words.length) {
         // Finished all words!
@@ -181,6 +195,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
     } else {
       _errors++;
       _input = '';
+      _onErrorAdaptive();
       _sfx.playIncorrect();
     }
     setState(() {});
@@ -493,6 +508,16 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                       ),
                       child: Row(
                         children: [
+                          // Close button
+                          InkWell(
+                            onTap: _showQuitDialog,
+                            borderRadius: BorderRadius.circular(8),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Icon(Icons.close_rounded, size: 22, color: AppColors.textSecondary),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Text('⭐', style: const TextStyle(fontSize: 20)),
                           const SizedBox(width: 4),
                           Text(
