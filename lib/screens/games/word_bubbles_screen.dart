@@ -331,6 +331,19 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     if (_streak > _bestStreak) _bestStreak = _streak;
     _input = '';
     _target = null;
+
+    // All bubbles cleared → spawn next one immediately & reset spawn timer
+    if (_bubbles.isEmpty && _phase == _Phase.playing) {
+      _spawnBubble();
+      _spawnTimer?.cancel();
+      _spawnTimer = Timer.periodic(
+        Duration(milliseconds: (_spawnInterval * 1000).round()),
+        (_) {
+          if (!mounted || _phase != _Phase.playing) return;
+          _spawnBubble();
+        },
+      );
+    }
   }
 
   void _addGhost(
