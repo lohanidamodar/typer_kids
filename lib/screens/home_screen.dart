@@ -87,8 +87,10 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 700;
-              final maxContentWidth = isWide ? 560.0 : constraints.maxWidth;
+              final screenW = constraints.maxWidth;
+              final isWide = screenW > 700;
+              final useGrid = screenW > 860;
+              final maxContentWidth = useGrid ? 900.0 : isWide ? 560.0 : screenW;
 
               return Center(
                 child: SingleChildScrollView(
@@ -110,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 12),
                         _buildAllLessonsButton(context),
                         const SizedBox(height: 20),
-                        _buildActivities(context),
+                        _buildActivities(context, useGrid: useGrid),
                         const SizedBox(height: 28),
                         _buildStatsCards(context, progress),
                         const SizedBox(height: 20),
@@ -321,7 +323,34 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActivities(BuildContext context) {
+  Widget _buildActivities(BuildContext context, {bool useGrid = false}) {
+    final cards = [
+      _ActivityCard(
+        emoji: '🎮',
+        title: 'Typing Games',
+        subtitle: 'Have fun while you practice!',
+        shortcut: 'G',
+        color: AppColors.accent,
+        onTap: () => _openGames(),
+      ),
+      _ActivityCard(
+        emoji: '📖',
+        title: 'Free Practice',
+        subtitle: 'Type classic stories at your pace',
+        shortcut: 'F',
+        color: AppColors.secondary,
+        onTap: () => _openSandbox(),
+      ),
+      _ActivityCard(
+        emoji: '⏱️',
+        title: 'Typing Test',
+        subtitle: 'Test your speed with a time limit',
+        shortcut: 'T',
+        color: AppColors.primary,
+        onTap: () => _openTypingTest(),
+      ),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -336,32 +365,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        _ActivityCard(
-          emoji: '🎮',
-          title: 'Typing Games',
-          subtitle: 'Have fun while you practice!',
-          shortcut: 'G',
-          color: AppColors.accent,
-          onTap: () => _openGames(),
-        ),
-        const SizedBox(height: 10),
-        _ActivityCard(
-          emoji: '📖',
-          title: 'Free Practice',
-          subtitle: 'Type classic stories at your pace',
-          shortcut: 'F',
-          color: AppColors.secondary,
-          onTap: () => _openSandbox(),
-        ),
-        const SizedBox(height: 10),
-        _ActivityCard(
-          emoji: '⏱️',
-          title: 'Typing Test',
-          subtitle: 'Test your speed with a time limit',
-          shortcut: 'T',
-          color: AppColors.primary,
-          onTap: () => _openTypingTest(),
-        ),
+        if (useGrid)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < cards.length; i++) ...[
+                Expanded(child: cards[i]),
+                if (i < cards.length - 1) const SizedBox(width: 10),
+              ],
+            ],
+          )
+        else
+          ...[
+            for (var i = 0; i < cards.length; i++) ...[
+              cards[i],
+              if (i < cards.length - 1) const SizedBox(height: 10),
+            ],
+          ],
       ],
     );
   }

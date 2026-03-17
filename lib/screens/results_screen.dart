@@ -98,31 +98,42 @@ class _ResultsScreenState extends State<ResultsScreen>
         child: Stack(
           children: [
             SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: FadeTransition(
-                    opacity: _slideController,
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 20),
-                        _buildEmoji(),
-                        const SizedBox(height: 16),
-                        _buildTitle(),
-                        const SizedBox(height: 8),
-                        _buildEncouragement(),
-                        const SizedBox(height: 24),
-                        _buildStars(),
-                        const SizedBox(height: 32),
-                        _buildStatsGrid(),
-                        const SizedBox(height: 32),
-                        _buildActionButtons(context),
-                        const SizedBox(height: 20),
-                      ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isLandscape = constraints.maxWidth > 860;
+
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isLandscape ? 40 : 24,
+                      vertical: isLandscape ? 12 : 24,
                     ),
-                  ),
-                ),
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: FadeTransition(
+                        opacity: _slideController,
+                        child: isLandscape
+                            ? _buildLandscapeResults(context)
+                            : Column(
+                                children: [
+                                  const SizedBox(height: 20),
+                                  _buildEmoji(),
+                                  const SizedBox(height: 16),
+                                  _buildTitle(),
+                                  const SizedBox(height: 8),
+                                  _buildEncouragement(),
+                                  const SizedBox(height: 24),
+                                  _buildStars(),
+                                  const SizedBox(height: 32),
+                                  _buildStatsGrid(),
+                                  const SizedBox(height: 32),
+                                  _buildActionButtons(context),
+                                  const SizedBox(height: 20),
+                                ],
+                              ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
             // Confetti
@@ -147,6 +158,40 @@ class _ResultsScreenState extends State<ResultsScreen>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLandscapeResults(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left: celebration + stats
+        Expanded(
+          flex: 5,
+          child: Column(
+            children: [
+              _buildEmoji(),
+              const SizedBox(height: 8),
+              _buildTitle(),
+              const SizedBox(height: 6),
+              _buildEncouragement(),
+              const SizedBox(height: 12),
+              _buildStars(),
+              const SizedBox(height: 16),
+              _buildStatsGrid(),
+            ],
+          ),
+        ),
+        const SizedBox(width: 32),
+        // Right: action buttons
+        Expanded(
+          flex: 3,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 24),
+            child: _buildActionButtons(context),
+          ),
+        ),
+      ],
     );
   }
 
