@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../data/lesson_curriculum_selector.dart';
 import '../../models/typing_stats.dart';
 import '../../providers/profile_provider.dart';
+import '../../screens/games/defend_temple_screen.dart';
 import '../../screens/games/falling_words_screen.dart';
 import '../../screens/games/game_menu_screen.dart';
 import '../../screens/games/speed_chase_screen.dart';
@@ -133,6 +134,12 @@ class AppRouter {
             name: 'speed-chase',
             parentNavigatorKey: _rootNavigatorKey,
             builder: (context, state) => const SpeedChaseScreen(),
+          ),
+          GoRoute(
+            path: 'defend-temple',
+            name: 'defend-temple',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const DefendTempleScreen(),
           ),
         ],
       ),

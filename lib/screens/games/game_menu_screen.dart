@@ -33,6 +33,8 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
       context.push('/games/word-bubbles');
     } else if (key == LogicalKeyboardKey.digit3) {
       context.push('/games/speed-chase');
+    } else if (key == LogicalKeyboardKey.digit4) {
+      context.push('/games/defend-temple');
     }
   }
 
@@ -148,6 +150,17 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                           color: const Color(0xFFE53935),
                           compact: !isTall,
                           onTap: () => context.push('/games/speed-chase'),
+                        ),
+                        SizedBox(height: cardGap),
+                        _GameCard(
+                          emoji: '🏯',
+                          title: 'Defend the Temple',
+                          description:
+                              'Stop the demons before they reach your temple!',
+                          shortcut: '4',
+                          color: const Color(0xFF8B0000),
+                          compact: !isTall,
+                          onTap: () => context.push('/games/defend-temple'),
                         ),
                       ],
                     ),
