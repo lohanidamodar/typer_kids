@@ -493,6 +493,16 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
                       ),
                       child: Row(
                         children: [
+                          // Close button
+                          InkWell(
+                            onTap: _showQuitDialog,
+                            borderRadius: BorderRadius.circular(8),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Icon(Icons.close_rounded, size: 22, color: AppColors.textSecondary),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Text('⭐', style: const TextStyle(fontSize: 20)),
                           const SizedBox(width: 4),
                           Text(

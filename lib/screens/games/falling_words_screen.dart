@@ -119,33 +119,42 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   final _sfx = SoundManager();
 
   // ── Difficulty config ──
+  //
+  // Reference height used to calibrate fall speed.  On screens shorter than
+  // this the words slow down proportionally so kids have enough reaction time.
+  static const _refHeight = 600.0;
+  double _gameAreaHeight = _refHeight;
+
+  /// Speed multiplier: 1.0 on a 600 px tall area, smaller on shorter screens.
+  double get _heightScale => (_gameAreaHeight / _refHeight).clamp(0.55, 1.0);
+
   double get _spawnInterval => switch (_difficulty) {
-    ContentDifficulty.easy => 2.8,
-    ContentDifficulty.medium => 2.0,
-    ContentDifficulty.hard => 1.3,
+    ContentDifficulty.easy => 3.2,
+    ContentDifficulty.medium => 2.4,
+    ContentDifficulty.hard => 1.6,
   };
 
-  double get _minSpeed => switch (_difficulty) {
-    ContentDifficulty.easy => 0.06,
-    ContentDifficulty.medium => 0.10,
-    ContentDifficulty.hard => 0.14,
+  double get _minSpeed => _heightScale * switch (_difficulty) {
+    ContentDifficulty.easy => 0.045,
+    ContentDifficulty.medium => 0.07,
+    ContentDifficulty.hard => 0.11,
   };
 
-  double get _maxSpeed => switch (_difficulty) {
-    ContentDifficulty.easy => 0.10,
-    ContentDifficulty.medium => 0.16,
-    ContentDifficulty.hard => 0.22,
+  double get _maxSpeed => _heightScale * switch (_difficulty) {
+    ContentDifficulty.easy => 0.075,
+    ContentDifficulty.medium => 0.12,
+    ContentDifficulty.hard => 0.18,
   };
 
   int get _maxWords => switch (_difficulty) {
-    ContentDifficulty.easy => 5,
-    ContentDifficulty.medium => 7,
-    ContentDifficulty.hard => 10,
+    ContentDifficulty.easy => 4,
+    ContentDifficulty.medium => 6,
+    ContentDifficulty.hard => 9,
   };
 
   int get _startLives => switch (_difficulty) {
-    ContentDifficulty.easy => 5,
-    ContentDifficulty.medium => 4,
+    ContentDifficulty.easy => 6,
+    ContentDifficulty.medium => 5,
     ContentDifficulty.hard => 3,
   };
 
@@ -639,6 +648,16 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
       ),
       child: Row(
         children: [
+          // Close button
+          InkWell(
+            onTap: _showQuitDialog,
+            borderRadius: BorderRadius.circular(8),
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.close_rounded, size: 22, color: AppColors.textSecondary),
+            ),
+          ),
+          const SizedBox(width: 8),
           // Score
           Text('⭐', style: const TextStyle(fontSize: 20)),
           const SizedBox(width: 4),
@@ -709,6 +728,8 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
       builder: (context, constraints) {
         final areaW = constraints.maxWidth;
         final areaH = constraints.maxHeight;
+        // Update stored height so speed scales with available space
+        _gameAreaHeight = areaH;
 
         return Stack(
           clipBehavior: Clip.hardEdge,
