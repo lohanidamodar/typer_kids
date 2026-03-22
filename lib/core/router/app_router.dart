@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../data/lesson_curriculum_selector.dart';
 import '../../models/typing_stats.dart';
 import '../../providers/profile_provider.dart';
+import '../../screens/games/balloon_pop_screen.dart';
 import '../../screens/games/defend_temple_screen.dart';
 import '../../screens/games/falling_words_screen.dart';
 import '../../screens/games/game_menu_screen.dart';
@@ -146,6 +147,12 @@ class AppRouter {
             name: 'defend-temple',
             parentNavigatorKey: _rootNavigatorKey,
             builder: (context, state) => const DefendTempleScreen(),
+          ),
+          GoRoute(
+            path: 'balloon-pop',
+            name: 'balloon-pop',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const BalloonPopScreen(),
           ),
         ],
       ),

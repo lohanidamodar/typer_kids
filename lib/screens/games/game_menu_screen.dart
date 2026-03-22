@@ -35,6 +35,8 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
       context.push('/games/word-bubbles');
     } else if (key == LogicalKeyboardKey.digit4) {
       context.push('/games/speed-chase');
+    } else if (key == LogicalKeyboardKey.digit5) {
+      context.push('/games/balloon-pop');
     }
   }
 
@@ -104,6 +106,16 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                   compact: !isTall,
                   onTap: () => context.push('/games/speed-chase'),
                 ),
+                _GameCard(
+                  emoji: '🎈',
+                  title: 'Balloon Pop',
+                  description:
+                      'Pop the balloons before they float away!',
+                  shortcut: '5',
+                  color: const Color(0xFFE53935),
+                  compact: !isTall,
+                  onTap: () => context.push('/games/balloon-pop'),
+                ),
               ];
 
               return Center(
@@ -164,7 +176,7 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                         SizedBox(height: sectionGap),
                         // ── Game cards ──
                         if (useGrid) ...[
-                          // 2x2 grid
+                          // 2x2 + 1 grid
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -180,6 +192,15 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                               Expanded(child: gameCards[2]),
                               SizedBox(width: cardGap),
                               Expanded(child: gameCards[3]),
+                            ],
+                          ),
+                          SizedBox(height: cardGap),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: gameCards[4]),
+                              SizedBox(width: cardGap),
+                              const Expanded(child: SizedBox()),
                             ],
                           ),
                         ] else ...[

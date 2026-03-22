@@ -637,9 +637,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       'speed-chase-easy': 'Speed Chase (Easy)',
       'speed-chase-medium': 'Speed Chase (Medium)',
       'speed-chase-hard': 'Speed Chase (Hard)',
-      'word-builder-easy': 'Word Builder (Easy)',
-      'word-builder-medium': 'Word Builder (Medium)',
-      'word-builder-hard': 'Word Builder (Hard)',
+      'balloon-pop-easy': 'Balloon Pop (Easy)',
+      'balloon-pop-medium': 'Balloon Pop (Medium)',
+      'balloon-pop-hard': 'Balloon Pop (Hard)',
     };
 
     final sorted = scores.entries.where((e) => e.value > 0).toList()
