@@ -10,7 +10,6 @@ import '../../screens/games/falling_words_screen.dart';
 import '../../screens/games/game_menu_screen.dart';
 import '../../screens/games/speed_chase_screen.dart';
 import '../../screens/games/word_bubbles_screen.dart';
-import '../../screens/games/word_builder_screen.dart';
 import '../../screens/home_screen.dart';
 import '../../screens/lesson_list_screen.dart';
 import '../../screens/profile_screen.dart';
@@ -147,12 +146,6 @@ class AppRouter {
             name: 'defend-temple',
             parentNavigatorKey: _rootNavigatorKey,
             builder: (context, state) => const DefendTempleScreen(),
-          ),
-          GoRoute(
-            path: 'word-builder',
-            name: 'word-builder',
-            parentNavigatorKey: _rootNavigatorKey,
-            builder: (context, state) => const WordBuilderScreen(),
           ),
         ],
       ),
