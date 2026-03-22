@@ -822,7 +822,7 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
                     text: TextSpan(
                       children: _buildWordSpans(balloon.word, isTarget),
                       style: GoogleFonts.fredoka(
-                        fontSize: 20 * balloon.size,
+                        fontSize: 28 * balloon.size,
                         fontWeight: FontWeight.w700,
                         color: Colors.grey.shade900,
                       ),
