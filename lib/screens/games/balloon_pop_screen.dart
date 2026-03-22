@@ -194,6 +194,16 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
       _elapsed = 0;
     });
 
+    // Spawn initial balloons immediately
+    final initialCount = switch (_difficulty) {
+      ContentDifficulty.easy => 2,
+      ContentDifficulty.medium => 3,
+      ContentDifficulty.hard => 3,
+    };
+    for (var i = 0; i < initialCount; i++) {
+      _spawnBalloon();
+    }
+
     _startTicker();
     _startSpawning();
     _startCountdown();
@@ -718,11 +728,9 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
   Widget _buildBalloon(_Balloon balloon, double screenW, double screenH) {
     final bw = 120.0 * balloon.size;
     final bh = 150.0 * balloon.size;
-    final totalH = bh + 40; // balloon + string
-    final wordH = 32.0; // estimated word label height
-    final fullH = wordH + 4 + totalH;
+    final totalH = bh + 30; // balloon + string
     final left = balloon.x * screenW - bw / 2;
-    final top = balloon.y * screenH - fullH;
+    final top = balloon.y * screenH - totalH;
     final color = _balloonColors[balloon.colorIndex];
     final isTarget = balloon == _target;
 
@@ -730,48 +738,45 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
       left: left,
       top: top,
       child: SizedBox(
-        width: bw + 40, // extra width for word overflow
-        height: fullH,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        width: bw,
+        height: totalH,
+        child: Stack(
+          alignment: Alignment.topCenter,
           children: [
-            // Word label above balloon
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              decoration: BoxDecoration(
-                color: isTarget
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(10),
-                border: isTarget
-                    ? Border.all(color: color, width: 2.5)
-                    : null,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: RichText(
-                text: TextSpan(
-                  children: _buildWordSpans(balloon.word, isTarget),
-                  style: GoogleFonts.fredoka(
-                    fontSize: 18 * balloon.size,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade800,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
             // Balloon shape
             CustomPaint(
               size: Size(bw, bh),
               painter: _BalloonPainter(
                 color: color,
                 isTarget: isTarget,
+              ),
+            ),
+            // Word inside balloon (centered in upper portion)
+            Positioned(
+              top: bh * 0.22,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: RichText(
+                    text: TextSpan(
+                      children: _buildWordSpans(balloon.word, isTarget),
+                      style: GoogleFonts.fredoka(
+                        fontSize: 16 * balloon.size,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey.shade900,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
