@@ -896,7 +896,7 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
         ? AppColors.incorrect
         : _remainingSeconds <= 30
             ? AppColors.secondary
-            : Colors.white;
+            : Colors.blueGrey.shade800;
 
     return Row(
       children: [
