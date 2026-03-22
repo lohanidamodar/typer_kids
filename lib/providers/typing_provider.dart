@@ -20,6 +20,18 @@ class TypingProvider extends ChangeNotifier {
   int _totalIncorrect = 0;
   int _totalTyped = 0;
 
+  /// Per-character error counts for this session: expected char -> error count
+  final Map<String, int> _charErrors = {};
+
+  /// Per-character correct counts for this session: expected char -> correct count
+  final Map<String, int> _charCorrects = {};
+
+  /// Error map for this session (expected char -> error count)
+  Map<String, int> get charErrors => Map.unmodifiable(_charErrors);
+
+  /// Correct map for this session (expected char -> correct count)
+  Map<String, int> get charCorrects => Map.unmodifiable(_charCorrects);
+
   DateTime? _startTime;
   Timer? _timer;
   Duration _elapsed = Duration.zero;
@@ -67,6 +79,8 @@ class TypingProvider extends ChangeNotifier {
     _totalCorrect = 0;
     _totalIncorrect = 0;
     _totalTyped = 0;
+    _charErrors.clear();
+    _charCorrects.clear();
     _isFinished = false;
     _isPaused = false;
     _elapsed = Duration.zero;
@@ -109,9 +123,11 @@ class TypingProvider extends ChangeNotifier {
     if (key == expected) {
       _charStates[_cursorPosition] = CharState.correct;
       _totalCorrect++;
+      _charCorrects[expected] = (_charCorrects[expected] ?? 0) + 1;
     } else {
       _charStates[_cursorPosition] = CharState.incorrect;
       _totalIncorrect++;
+      _charErrors[expected] = (_charErrors[expected] ?? 0) + 1;
     }
 
     _cursorPosition++;

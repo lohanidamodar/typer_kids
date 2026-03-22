@@ -111,6 +111,10 @@ class _TypingScreenState extends State<TypingScreen> {
       listen: false,
     );
     progressProvider.recordAttempt(widget.lesson.id, stats);
+    progressProvider.recordLetterStats(
+      correct: _typingProvider.charCorrects,
+      errors: _typingProvider.charErrors,
+    );
 
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {

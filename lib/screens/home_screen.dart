@@ -42,6 +42,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _openSandbox();
     } else if (key == LogicalKeyboardKey.keyT) {
       _openTypingTest();
+    } else if (key == LogicalKeyboardKey.keyD) {
+      _openStatistics();
     }
   }
 
@@ -73,6 +75,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _openTypingTest() {
     context.push('/test');
+  }
+
+  void _openStatistics() {
+    context.push('/statistics');
   }
 
   @override
@@ -349,6 +355,14 @@ class _HomeScreenState extends State<HomeScreen> {
         color: AppColors.primary,
         onTap: () => _openTypingTest(),
       ),
+      _ActivityCard(
+        emoji: '📊',
+        title: 'Statistics',
+        subtitle: 'See your progress and weak spots',
+        shortcut: 'D',
+        color: const Color(0xFF5C6BC0),
+        onTap: () => _openStatistics(),
+      ),
     ];
 
     return Column(
@@ -365,17 +379,25 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        if (useGrid)
+        if (useGrid) ...[
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (var i = 0; i < cards.length; i++) ...[
-                Expanded(child: cards[i]),
-                if (i < cards.length - 1) const SizedBox(width: 10),
-              ],
+              Expanded(child: cards[0]),
+              const SizedBox(width: 10),
+              Expanded(child: cards[1]),
             ],
-          )
-        else
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: cards[2]),
+              const SizedBox(width: 10),
+              Expanded(child: cards[3]),
+            ],
+          ),
+        ] else
           ...[
             for (var i = 0; i < cards.length; i++) ...[
               cards[i],

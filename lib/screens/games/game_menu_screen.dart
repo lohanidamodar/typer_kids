@@ -35,6 +35,8 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
       context.push('/games/word-bubbles');
     } else if (key == LogicalKeyboardKey.digit4) {
       context.push('/games/speed-chase');
+    } else if (key == LogicalKeyboardKey.digit5) {
+      context.push('/games/word-builder');
     }
   }
 
@@ -104,6 +106,16 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                   compact: !isTall,
                   onTap: () => context.push('/games/speed-chase'),
                 ),
+                _GameCard(
+                  emoji: '🧩',
+                  title: 'Word Builder',
+                  description:
+                      'Unscramble letters to build the word!',
+                  shortcut: '5',
+                  color: const Color(0xFF5C6BC0),
+                  compact: !isTall,
+                  onTap: () => context.push('/games/word-builder'),
+                ),
               ];
 
               return Center(
@@ -164,22 +176,26 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                         SizedBox(height: sectionGap),
                         // ── Game cards ──
                         if (useGrid) ...[
-                          // 2x2 grid
+                          // 3+2 grid
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(child: gameCards[0]),
                               SizedBox(width: cardGap),
                               Expanded(child: gameCards[1]),
+                              SizedBox(width: cardGap),
+                              Expanded(child: gameCards[2]),
                             ],
                           ),
                           SizedBox(height: cardGap),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(child: gameCards[2]),
-                              SizedBox(width: cardGap),
                               Expanded(child: gameCards[3]),
+                              SizedBox(width: cardGap),
+                              Expanded(child: gameCards[4]),
+                              SizedBox(width: cardGap),
+                              const Expanded(child: SizedBox()),
                             ],
                           ),
                         ] else ...[
