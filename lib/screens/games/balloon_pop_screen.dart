@@ -716,10 +716,13 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
   }
 
   Widget _buildBalloon(_Balloon balloon, double screenW, double screenH) {
-    final bw = 80.0 * balloon.size;
-    final bh = 100.0 * balloon.size;
+    final bw = 120.0 * balloon.size;
+    final bh = 150.0 * balloon.size;
+    final totalH = bh + 40; // balloon + string
+    final wordH = 32.0; // estimated word label height
+    final fullH = wordH + 4 + totalH;
     final left = balloon.x * screenW - bw / 2;
-    final top = balloon.y * screenH - bh;
+    final top = balloon.y * screenH - fullH;
     final color = _balloonColors[balloon.colorIndex];
     final isTarget = balloon == _target;
 
@@ -727,26 +730,26 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
       left: left,
       top: top,
       child: SizedBox(
-        width: bw,
-        height: bh + 30, // extra for string + word
+        width: bw + 40, // extra width for word overflow
+        height: fullH,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Word label above balloon
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
                 color: isTarget
                     ? Colors.white
-                    : Colors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(8),
+                    : Colors.white.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(10),
                 border: isTarget
-                    ? Border.all(color: color, width: 2)
+                    ? Border.all(color: color, width: 2.5)
                     : null,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 4,
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -755,14 +758,14 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
                 text: TextSpan(
                   children: _buildWordSpans(balloon.word, isTarget),
                   style: GoogleFonts.fredoka(
-                    fontSize: 14 * balloon.size,
+                    fontSize: 18 * balloon.size,
                     fontWeight: FontWeight.w600,
                     color: Colors.grey.shade800,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             // Balloon shape
             CustomPaint(
               size: Size(bw, bh),
@@ -796,7 +799,7 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
     final color = _balloonColors[pop.colorIndex];
     final cx = pop.x * screenW;
     final cy = pop.y * screenH;
-    final size = 60.0 * pop.life;
+    final size = 100.0 * pop.life;
 
     return Positioned(
       left: cx - size / 2,
@@ -819,7 +822,7 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
               child: Text(
                 'POP!',
                 style: GoogleFonts.fredoka(
-                  fontSize: 12 * pop.life,
+                  fontSize: 18 * pop.life,
                   fontWeight: FontWeight.w700,
                   color: color,
                 ),
