@@ -318,14 +318,42 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
     }
   }
 
+  void _showQuitDialog() {
+    _ticker?.stop();
+    _spawnTimer?.cancel();
+    _countdownTimer?.cancel();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _QuitDialog(
+        onResume: () {
+          Navigator.of(ctx).pop();
+          if (_phase == _Phase.playing && mounted) {
+            _lastTick = Duration.zero;
+            _ticker?.start();
+            _startSpawning();
+            _startCountdown();
+            _gameFocusNode.requestFocus();
+          }
+        },
+        onQuit: () {
+          Navigator.of(ctx).pop();
+          _ticker?.dispose();
+          context.pop();
+        },
+      ),
+    ).then((_) {
+      if (_phase == _Phase.playing && mounted) {
+        _gameFocusNode.requestFocus();
+      }
+    });
+  }
+
   void _handleGameKey(KeyEvent event) {
     if (event is! KeyDownEvent) return;
 
     if (event.logicalKey == LogicalKeyboardKey.escape) {
-      _ticker?.dispose();
-      _spawnTimer?.cancel();
-      _countdownTimer?.cancel();
-      context.pop();
+      _showQuitDialog();
       return;
     }
 
@@ -555,7 +583,9 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
                   ),
                   const SizedBox(height: 12),
                   Row(
-                    children: ContentDifficulty.values.map((d) {
+                    children: ContentDifficulty.values.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final d = entry.value;
                       final isSelected = _difficulty == d;
                       final colors = {
                         ContentDifficulty.easy: AppColors.correct,
@@ -599,6 +629,28 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
                                         color: isSelected
                                             ? c
                                             : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 1,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: c.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: c.withValues(alpha: 0.3),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '${idx + 1}',
+                                        style: GoogleFonts.robotoMono(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: c,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -770,7 +822,7 @@ class _BalloonPopScreenState extends State<BalloonPopScreen>
                     text: TextSpan(
                       children: _buildWordSpans(balloon.word, isTarget),
                       style: GoogleFonts.fredoka(
-                        fontSize: 16 * balloon.size,
+                        fontSize: 20 * balloon.size,
                         fontWeight: FontWeight.w700,
                         color: Colors.grey.shade900,
                       ),
@@ -1203,4 +1255,111 @@ class _BalloonPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _BalloonPainter old) =>
       color != old.color || isTarget != old.isTarget;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Quit confirmation dialog
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _QuitDialog extends StatefulWidget {
+  final VoidCallback onResume;
+  final VoidCallback onQuit;
+
+  const _QuitDialog({required this.onResume, required this.onQuit});
+
+  @override
+  State<_QuitDialog> createState() => _QuitDialogState();
+}
+
+class _QuitDialogState extends State<_QuitDialog> {
+  final _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.keyR) {
+      widget.onResume();
+    } else if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.keyQ) {
+      widget.onQuit();
+    }
+  }
+
+  Widget _badge(String label, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(left: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.robotoMono(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyboardListener(
+      focusNode: _focusNode,
+      autofocus: true,
+      onKeyEvent: _handleKey,
+      child: AlertDialog(
+        backgroundColor: const Color(0xFFF0F4FF),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Leave Game?',
+          style: GoogleFonts.fredoka(
+            fontSize: 24,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: Text(
+          'Your score will not be saved if you quit now!',
+          style: GoogleFonts.nunito(fontSize: 16, color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: widget.onResume,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Keep Playing',
+                  style: GoogleFonts.fredoka(color: AppColors.correct),
+                ),
+                _badge('Esc', AppColors.correct),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: widget.onQuit,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Quit',
+                  style: GoogleFonts.fredoka(color: AppColors.incorrect),
+                ),
+                _badge('Q', AppColors.incorrect),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
