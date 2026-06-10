@@ -8,6 +8,7 @@ import '../core/theme/app_colors.dart';
 import '../data/lesson_curriculum_selector.dart';
 import '../models/lesson.dart';
 import '../models/typing_stats.dart';
+import '../widgets/shortcut_badge.dart';
 import '../widgets/star_rating.dart';
 
 /// Celebration screen shown after completing a lesson
@@ -406,7 +407,7 @@ class _ResultsScreenState extends State<ResultsScreen>
                       ),
                     ),
                     const SizedBox(width: 8),
-                    _ResultShortcutBadge(label: 'Enter', light: true),
+                    ShortcutBadge('Enter', light: true),
                   ],
                 ),
                 style: ElevatedButton.styleFrom(
@@ -435,7 +436,7 @@ class _ResultsScreenState extends State<ResultsScreen>
                   style: GoogleFonts.fredoka(fontSize: 20, color: Colors.white),
                 ),
                 const SizedBox(width: 8),
-                _ResultShortcutBadge(label: 'R', light: true),
+                ShortcutBadge('R', light: true),
               ],
             ),
             style: ElevatedButton.styleFrom(
@@ -461,7 +462,7 @@ class _ResultsScreenState extends State<ResultsScreen>
               children: [
                 Text('Back', style: GoogleFonts.fredoka(fontSize: 20)),
                 const SizedBox(width: 8),
-                _ResultShortcutBadge(label: 'Esc'),
+                ShortcutBadge('Esc'),
               ],
             ),
             style: OutlinedButton.styleFrom(
@@ -481,38 +482,6 @@ class _ResultsScreenState extends State<ResultsScreen>
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
-  }
-}
-
-class _ResultShortcutBadge extends StatelessWidget {
-  final String label;
-  final bool light;
-  const _ResultShortcutBadge({required this.label, this.light = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: light
-            ? Colors.white.withValues(alpha: 0.25)
-            : AppColors.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: light
-              ? Colors.white.withValues(alpha: 0.4)
-              : AppColors.primary.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: light ? Colors.white : AppColors.primary,
-        ),
-      ),
-    );
   }
 }
 

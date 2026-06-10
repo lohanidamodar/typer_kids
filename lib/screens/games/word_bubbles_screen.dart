@@ -11,6 +11,9 @@ import '../../core/theme/app_colors.dart';
 import '../../core/sound_manager.dart';
 import '../../data/word_lists.dart';
 import '../../providers/progress_provider.dart';
+import '../../widgets/quit_dialog.dart';
+import 'widgets/word_bubbles_models.dart';
+import 'widgets/word_bubbles_views.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data
@@ -19,34 +22,6 @@ import '../../providers/progress_provider.dart';
 enum _Phase { setup, playing, gameOver }
 
 enum _FlashType { correct, wrong }
-
-class _Bubble {
-  final String word;
-  double x; // fraction 0..1
-  double y; // fraction 0..1
-  final int colorIndex;
-  double life; // seconds remaining before it fades
-  final double maxLife;
-
-  _Bubble({
-    required this.word,
-    required this.x,
-    required this.y,
-    required this.colorIndex,
-    required this.life,
-  }) : maxLife = life;
-
-  double get opacity => (life / maxLife).clamp(0.4, 1.0);
-}
-
-class _Ghost {
-  final String word;
-  final double x;
-  final double y;
-  final bool success;
-  final int colorIndex;
-  _Ghost(this.word, this.x, this.y, this.success, this.colorIndex);
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Screen
@@ -75,9 +50,9 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
   _Phase _phase = _Phase.setup;
   ContentDifficulty _difficulty = ContentDifficulty.easy;
 
-  final List<_Bubble> _bubbles = [];
+  final List<Bubble> _bubbles = [];
   String _input = '';
-  _Bubble? _target;
+  Bubble? _target;
   int _score = 0;
   int _popped = 0;
   int _missed = 0;
@@ -91,7 +66,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
   Timer? _flashTimer;
 
   // Ghost feedback indicators
-  final List<_Ghost> _ghosts = [];
+  final List<WordBubblesGhost> _ghosts = [];
 
   // Timer
   Timer? _gameTimer;
@@ -222,7 +197,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     } while (_bubbles.any((b) => b.word == word) && tries < 10);
 
     _bubbles.add(
-      _Bubble(
+      Bubble(
         word: word,
         x: _random.nextDouble() * 0.7 + 0.05,
         y: _random.nextDouble() * 0.7 + 0.05,
@@ -235,7 +210,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
 
   void _tick() {
     // Fade bubbles
-    final expired = <_Bubble>[];
+    final expired = <Bubble>[];
     for (final b in _bubbles) {
       b.life -= 0.08;
       if (b.life <= 0) expired.add(b);
@@ -338,7 +313,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     }
   }
 
-  void _popBubble(_Bubble bubble) {
+  void _popBubble(Bubble bubble) {
     _addGhost(bubble.word, bubble.x, bubble.y, true, bubble.colorIndex);
     _bubbles.remove(bubble);
     _score += bubble.word.length * 10 + (bubble.life * 5).round();
@@ -370,7 +345,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     bool success,
     int colorIndex,
   ) {
-    final ghost = _Ghost(word, x, y, success, colorIndex);
+    final ghost = WordBubblesGhost(word, x, y, success, colorIndex);
     _ghosts.add(ghost);
     Timer(const Duration(milliseconds: 600), () {
       if (mounted) {
@@ -404,8 +379,16 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _QuitDialog(
-        onResume: () => Navigator.of(ctx).pop(),
+      builder: (ctx) => QuitDialog(
+        title: 'Quit Game?',
+        message: 'Your current score will be lost.',
+        stayLabel: 'Resume',
+        quitLabel: 'Quit',
+        stayBadge: 'Esc',
+        quitBadge: 'Q',
+        stayKey: LogicalKeyboardKey.keyR,
+        quitKey: LogicalKeyboardKey.keyQ,
+        onStay: () => Navigator.of(ctx).pop(),
         onQuit: () {
           Navigator.of(ctx).pop();
           if (mounted) context.pop();
@@ -452,182 +435,27 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
   @override
   Widget build(BuildContext context) {
     return switch (_phase) {
-      _Phase.setup => _buildSetup(),
-      _Phase.playing => _buildGame(),
-      _Phase.gameOver => _buildGameOver(),
-    };
-  }
-
-  // ── Setup ─────────────────────────────────────────────────────────────────
-
-  void _handleSetupKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.escape) {
-      context.pop();
-    } else if (key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.space) {
-      _startGame();
-    } else if (key == LogicalKeyboardKey.digit1) {
-      setState(() => _difficulty = ContentDifficulty.easy);
-    } else if (key == LogicalKeyboardKey.digit2) {
-      setState(() => _difficulty = ContentDifficulty.medium);
-    } else if (key == LogicalKeyboardKey.digit3) {
-      setState(() => _difficulty = ContentDifficulty.hard);
-    }
-  }
-
-  Widget _buildSetup() {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: KeyboardListener(
+      _Phase.setup => WordBubblesMenu(
         focusNode: _setupFocusNode,
-        autofocus: true,
-        onKeyEvent: _handleSetupKey,
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final screenW = constraints.maxWidth;
-              final screenH = constraints.maxHeight;
-              final isWide = screenW > 600;
-              final isTall = screenH > 650;
-              final hPad = isWide ? 40.0 : 20.0;
-              final vPad = isTall ? 32.0 : 16.0;
-              final maxW = isWide ? 520.0 : screenW;
-
-              return Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: hPad,
-                    vertical: vPad,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxW),
-                    child: Column(
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: () => context.pop(),
-                            icon: const Icon(
-                              Icons.arrow_back_rounded,
-                              size: 18,
-                            ),
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Back',
-                                  style: GoogleFonts.fredoka(fontSize: 16),
-                                ),
-                                const SizedBox(width: 6),
-                                _keyBadge('Esc', AppColors.textSecondary),
-                              ],
-                            ),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: isTall ? 16 : 8),
-                        Text(
-                          '🫧',
-                          style: TextStyle(fontSize: isTall ? 56 : 36),
-                        ),
-                        SizedBox(height: isTall ? 8 : 4),
-                        Text(
-                          'Word Bubbles',
-                          style: GoogleFonts.fredoka(
-                            fontSize: isWide ? 34 : 26,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF26C6DA),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Pop the bubbles by typing the words!',
-                          style: GoogleFonts.nunito(
-                            fontSize: isWide ? 16 : 14,
-                            color: AppColors.textSecondary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: isTall ? 32 : 16),
-                        Text(
-                          'Choose Difficulty',
-                          style: GoogleFonts.fredoka(
-                            fontSize: isWide ? 20 : 18,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        SizedBox(height: isTall ? 14 : 10),
-                        Row(
-                          children: ContentDifficulty.values.map((d) {
-                            final selected = d == _difficulty;
-                            return Expanded(
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  left: d.index == 0 ? 0 : 6,
-                                  right: d.index == 2 ? 0 : 6,
-                                ),
-                                child: _DifficultyCard(
-                                  difficulty: d,
-                                  index: d.index + 1,
-                                  selected: selected,
-                                  compact: !isTall,
-                                  accentColor: const Color(0xFF26C6DA),
-                                  onTap: () => setState(() => _difficulty = d),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        SizedBox(height: isTall ? 32 : 16),
-                        SizedBox(
-                          width: isWide ? 280 : 220,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _startGame,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF26C6DA),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              elevation: 4,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.play_arrow_rounded, size: 28),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    'Start Game',
-                                    style: GoogleFonts.fredoka(
-                                      fontSize: isWide ? 22 : 18,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                _keyBadge('Enter', Colors.white),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+        difficulty: _difficulty,
+        onDifficultySelected: (d) => setState(() => _difficulty = d),
+        onStart: _startGame,
+        onBack: () => context.pop(),
       ),
-    );
+      _Phase.playing => _buildGame(),
+      _Phase.gameOver => WordBubblesGameOver(
+        focusNode: _overFocusNode,
+        score: _score,
+        popped: _popped,
+        missed: _missed,
+        bestStreak: _bestStreak,
+        gameDuration: _gameDuration,
+        isNewHighScore: _isNewHighScore,
+        highScore: _highScore,
+        onPlayAgain: _playAgain,
+        onBack: () => context.pop(),
+      ),
+    };
   }
 
   // ── Playing ───────────────────────────────────────────────────────────────
@@ -791,7 +619,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
   }
 
   Widget _buildBubble(
-    _Bubble bubble,
+    Bubble bubble,
     double areaW,
     double areaH,
     double fontSize,
@@ -917,7 +745,7 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
   }
 
   Widget _buildGhostIndicator(
-    _Ghost ghost,
+    WordBubblesGhost ghost,
     double areaW,
     double areaH,
     double fontSize,
@@ -1096,480 +924,6 @@ class _WordBubblesScreenState extends State<WordBubblesScreen> {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  // ── Game Over ─────────────────────────────────────────────────────────────
-
-  void _handleOverKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.space) {
-      _playAgain();
-    } else if (key == LogicalKeyboardKey.escape) {
-      context.pop();
-    }
-  }
-
-  Widget _buildGameOver() {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: KeyboardListener(
-        focusNode: _overFocusNode,
-        autofocus: true,
-        onKeyEvent: _handleOverKey,
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final screenW = constraints.maxWidth;
-              final screenH = constraints.maxHeight;
-              final isWide = screenW > 600;
-              final isTall = screenH > 650;
-              final hPad = isWide ? 40.0 : 20.0;
-              final vPad = isTall ? 32.0 : 16.0;
-              final maxW = isWide ? 460.0 : screenW;
-              final scoreFontSize = isTall ? 52.0 : 36.0;
-              final sectionGap = isTall ? 24.0 : 12.0;
-
-              return Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: hPad,
-                    vertical: vPad,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxW),
-                    child: Column(
-                      children: [
-                        Text(
-                          '🫧',
-                          style: TextStyle(fontSize: isTall ? 56 : 36),
-                        ),
-                        SizedBox(height: isTall ? 8 : 4),
-                        Text(
-                          'Time\'s Up!',
-                          style: GoogleFonts.fredoka(
-                            fontSize: isWide ? 36 : 28,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF26C6DA),
-                          ),
-                        ),
-                        SizedBox(height: sectionGap),
-                        // Score
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(isTall ? 20 : 14),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.starFilled.withValues(alpha: 0.15),
-                                const Color(0xFF26C6DA).withValues(alpha: 0.15),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: AppColors.starFilled.withValues(
-                                alpha: 0.4,
-                              ),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              if (_isNewHighScore)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: Text(
-                                    '⭐ New High Score! ⭐',
-                                    style: GoogleFonts.fredoka(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.accent,
-                                    ),
-                                  ),
-                                ),
-                              Text(
-                                '$_score',
-                                style: GoogleFonts.fredoka(
-                                  fontSize: scoreFontSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.starFilled,
-                                ),
-                              ),
-                              Text(
-                                'points',
-                                style: GoogleFonts.nunito(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              if (!_isNewHighScore && _highScore > 0)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    'Best: $_highScore',
-                                    style: GoogleFonts.nunito(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: sectionGap),
-                        Row(
-                          children: [
-                            _OverStat(
-                              emoji: '🫧',
-                              label: 'Popped',
-                              value: '$_popped',
-                            ),
-                            const SizedBox(width: 12),
-                            _OverStat(
-                              emoji: '💨',
-                              label: 'Missed',
-                              value: '$_missed',
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: isTall ? 12 : 8),
-                        Row(
-                          children: [
-                            _OverStat(
-                              emoji: '🔥',
-                              label: 'Best Streak',
-                              value: '$_bestStreak',
-                            ),
-                            const SizedBox(width: 12),
-                            _OverStat(
-                              emoji: '⏱️',
-                              label: 'Duration',
-                              value: '${_gameDuration}s',
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: sectionGap + 8),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _playAgain,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF26C6DA),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.replay_rounded, size: 24),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Play Again',
-                                  style: GoogleFonts.fredoka(fontSize: 20),
-                                ),
-                                const SizedBox(width: 8),
-                                _keyBadge('Enter', Colors.white),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton.icon(
-                          onPressed: () => context.pop(),
-                          icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Back to Games',
-                                style: GoogleFonts.fredoka(fontSize: 16),
-                              ),
-                              const SizedBox(width: 6),
-                              _keyBadge('Esc', AppColors.textSecondary),
-                            ],
-                          ),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  Widget _keyBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Extracted widgets
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _DifficultyCard extends StatelessWidget {
-  final ContentDifficulty difficulty;
-  final int index;
-  final bool selected;
-  final bool compact;
-  final Color accentColor;
-  final VoidCallback onTap;
-
-  const _DifficultyCard({
-    required this.difficulty,
-    required this.index,
-    required this.selected,
-    this.compact = false,
-    required this.accentColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final vPad = compact ? 8.0 : 14.0;
-    final emojiSize = compact ? 22.0 : 28.0;
-    final labelSize = compact ? 14.0 : 16.0;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: EdgeInsets.symmetric(vertical: vPad, horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected ? accentColor.withValues(alpha: 0.12) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? accentColor : Colors.grey.shade300,
-            width: selected ? 2.5 : 1,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: accentColor.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          children: [
-            Text(difficulty.emoji, style: TextStyle(fontSize: emojiSize)),
-            SizedBox(height: compact ? 2 : 4),
-            Text(
-              difficulty.label,
-              style: GoogleFonts.fredoka(
-                fontSize: labelSize,
-                fontWeight: FontWeight.w600,
-                color: selected ? accentColor : AppColors.textPrimary,
-              ),
-            ),
-            if (!compact) ...[
-              const SizedBox(height: 2),
-              Text(
-                difficulty.description,
-                style: GoogleFonts.nunito(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-            SizedBox(height: compact ? 3 : 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: accentColor.withValues(alpha: 0.2)),
-              ),
-              child: Text(
-                '$index',
-                style: GoogleFonts.robotoMono(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: accentColor,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OverStat extends StatelessWidget {
-  final String emoji;
-  final String label;
-  final String value;
-
-  const _OverStat({
-    required this.emoji,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Column(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 22)),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: GoogleFonts.fredoka(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            Text(
-              label,
-              style: GoogleFonts.nunito(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _QuitDialog extends StatefulWidget {
-  final VoidCallback onResume;
-  final VoidCallback onQuit;
-
-  const _QuitDialog({required this.onResume, required this.onQuit});
-
-  @override
-  State<_QuitDialog> createState() => _QuitDialogState();
-}
-
-class _QuitDialogState extends State<_QuitDialog> {
-  final _focusNode = FocusNode();
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  void _handleKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.keyR) {
-      widget.onResume();
-    } else if (key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.keyQ) {
-      widget.onQuit();
-    }
-  }
-
-  Widget _badge(String label, Color color) => Container(
-    margin: const EdgeInsets.only(left: 6),
-    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(4),
-      border: Border.all(color: color.withValues(alpha: 0.3)),
-    ),
-    child: Text(
-      label,
-      style: GoogleFonts.robotoMono(
-        fontSize: 10,
-        fontWeight: FontWeight.w600,
-        color: color,
-      ),
-    ),
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: _handleKey,
-      child: AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Quit Game?',
-          style: GoogleFonts.fredoka(
-            fontSize: 24,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        content: Text(
-          'Your current score will be lost.',
-          style: GoogleFonts.nunito(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: widget.onResume,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Resume',
-                  style: GoogleFonts.fredoka(color: AppColors.primary),
-                ),
-                _badge('Esc', AppColors.primary),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: widget.onQuit,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Quit',
-                  style: GoogleFonts.fredoka(color: AppColors.incorrect),
-                ),
-                _badge('Q', AppColors.incorrect),
-              ],
-            ),
-          ),
         ],
       ),
     );

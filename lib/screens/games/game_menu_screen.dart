@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../widgets/shortcut_badge.dart';
 
 /// Menu screen listing available typing games.
 class GameMenuScreen extends StatefulWidget {
@@ -133,7 +134,7 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                                   style: GoogleFonts.fredoka(fontSize: 16),
                                 ),
                                 const SizedBox(width: 6),
-                                _KeyBadge('Esc'),
+                                ShortcutBadge('Esc'),
                               ],
                             ),
                             style: TextButton.styleFrom(
@@ -281,36 +282,11 @@ class _GameCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _KeyBadge(shortcut),
+              ShortcutBadge(shortcut),
               const SizedBox(width: 4),
               Icon(Icons.arrow_forward_ios_rounded, size: 18, color: color),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _KeyBadge extends StatelessWidget {
-  final String label;
-  const _KeyBadge(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: AppColors.primary,
         ),
       ),
     );
