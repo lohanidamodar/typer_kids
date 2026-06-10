@@ -915,9 +915,7 @@ class _SpeedChaseScreenState extends State<SpeedChaseScreen> {
   Widget _buildGameOver() {
     final won = _playerProgress > _ghostProgress;
     final elapsed = _totalSeconds - _remainingSeconds;
-    final wpm = elapsed > 0
-        ? ((_currentIndex / (elapsed / 60)).round())
-        : _currentIndex;
+    final wpm = elapsed > 0 ? ((_currentIndex / (elapsed / 60)).round()) : 0;
 
     return Scaffold(
       backgroundColor: AppColors.background,

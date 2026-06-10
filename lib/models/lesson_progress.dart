@@ -22,12 +22,14 @@ class LessonProgress {
     this.history = const [],
   });
 
-  /// Creates an updated progress after a new attempt
-  LessonProgress withNewAttempt(TypingStats stats) {
+  /// Creates an updated progress after a new attempt.
+  /// [passed] is whether the attempt met the lesson's passing accuracy —
+  /// only passing attempts mark a lesson as completed.
+  LessonProgress withNewAttempt(TypingStats stats, {required bool passed}) {
     final newHistory = [...history, stats];
     return LessonProgress(
       lessonId: lessonId,
-      completed: completed || stats.starRating >= 1,
+      completed: completed || passed,
       bestStarRating: stats.starRating > bestStarRating
           ? stats.starRating
           : bestStarRating,

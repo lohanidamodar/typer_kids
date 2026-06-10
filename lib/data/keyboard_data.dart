@@ -52,6 +52,11 @@ class KeyboardData {
     'p': 'right-pinky', '[': 'right-pinky', ']': 'right-pinky',
     '\\': 'right-pinky',
     ';': 'right-pinky', "'": 'right-pinky', '/': 'right-pinky',
+    // Shifted punctuation maps to the same finger as its base key
+    '!': 'left-pinky', // shift + 1
+    '?': 'right-pinky', // shift + /
+    ':': 'right-pinky', // shift + ;
+    '"': 'right-pinky', // shift + '
     // Thumbs
     ' ': 'thumb',
   };
@@ -69,6 +74,18 @@ class KeyboardData {
     'thumb' => AppColors.fingerThumb,
     _ => Colors.grey,
   };
+
+  /// Physical key that produces a shifted punctuation character
+  static const Map<String, String> _shiftedToBase = {
+    '!': '1',
+    '?': '/',
+    ':': ';',
+    '"': "'",
+  };
+
+  /// The physical key to highlight for a character (e.g. '?' lives on '/')
+  static String baseKey(String key) =>
+      _shiftedToBase[key] ?? key.toLowerCase();
 
   /// Get the color for a specific key
   static Color colorForKey(String key) {

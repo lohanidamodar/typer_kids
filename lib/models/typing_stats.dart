@@ -6,12 +6,17 @@ class TypingStats {
   final Duration elapsed;
   final DateTime completedAt;
 
+  /// How many times each expected character was mistyped during the session.
+  /// Keys are the expected characters (e.g. 'r'), values are miss counts.
+  final Map<String, int> errorsByKey;
+
   const TypingStats({
     required this.totalCharacters,
     required this.correctCharacters,
     required this.incorrectCharacters,
     required this.elapsed,
     required this.completedAt,
+    this.errorsByKey = const {},
   });
 
   /// Accuracy as a percentage (0-100)
@@ -52,6 +57,7 @@ class TypingStats {
     'incorrectCharacters': incorrectCharacters,
     'elapsedMs': elapsed.inMilliseconds,
     'completedAt': completedAt.toIso8601String(),
+    if (errorsByKey.isNotEmpty) 'errorsByKey': errorsByKey,
   };
 
   factory TypingStats.fromJson(Map<String, dynamic> json) => TypingStats(
@@ -60,5 +66,10 @@ class TypingStats {
     incorrectCharacters: json['incorrectCharacters'] as int,
     elapsed: Duration(milliseconds: json['elapsedMs'] as int),
     completedAt: DateTime.parse(json['completedAt'] as String),
+    errorsByKey:
+        (json['errorsByKey'] as Map<String, dynamic>?)?.map(
+          (k, v) => MapEntry(k, v as int),
+        ) ??
+        const {},
   );
 }

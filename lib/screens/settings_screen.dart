@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/sound_manager.dart';
 import '../core/theme/app_colors.dart';
 import '../providers/profile_provider.dart';
 import '../providers/progress_provider.dart';
@@ -80,6 +82,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 32),
             ],
+            // Sound
+            _buildSectionHeader('Sound'),
+            const SizedBox(height: 12),
+            _buildInfoCard(
+              context,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Text('🔊', style: TextStyle(fontSize: 22)),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Sound Effects',
+                          style: GoogleFonts.nunito(
+                            fontSize: 16,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Switch(
+                      value: SoundManager().enabled,
+                      activeThumbColor: AppColors.primary,
+                      onChanged: (value) async {
+                        setState(() => SoundManager().enabled = value);
+                        if (value) SoundManager().playPop();
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setBool(SoundManager.prefsKey, value);
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+
             // Stats overview
             _buildSectionHeader('Your Progress'),
             const SizedBox(height: 12),

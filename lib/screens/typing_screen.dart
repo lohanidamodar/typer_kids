@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../core/sound_manager.dart';
 import '../core/theme/app_colors.dart';
+import '../data/practice_generator.dart';
 import '../models/lesson.dart';
 import '../providers/progress_provider.dart';
 import '../providers/typing_provider.dart';
@@ -26,6 +28,7 @@ class _TypingScreenState extends State<TypingScreen> {
   late TypingProvider _typingProvider;
   final FocusNode _focusNode = FocusNode();
   final FocusNode _introFocusNode = FocusNode();
+  final _sfx = SoundManager();
   bool _showIntro = true;
   bool _isTransitioning = false;
 
@@ -35,15 +38,18 @@ class _TypingScreenState extends State<TypingScreen> {
     _typingProvider = TypingProvider();
     _typingProvider.startLesson(widget.lesson);
 
-    // Track that user started this lesson
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        Provider.of<ProgressProvider>(
-          context,
-          listen: false,
-        ).setLastLesson(widget.lesson.id);
-      }
-    });
+    // Track that user started this lesson (dynamic practice lessons aren't
+    // part of the curriculum flow, so they can't be "resumed")
+    if (widget.lesson.id != PracticeGenerator.trickyKeysLessonId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Provider.of<ProgressProvider>(
+            context,
+            listen: false,
+          ).setLastLesson(widget.lesson.id);
+        }
+      });
+    }
   }
 
   @override
@@ -84,7 +90,12 @@ class _TypingScreenState extends State<TypingScreen> {
 
     final key = event.character;
     if (key != null && key.isNotEmpty) {
-      _typingProvider.onKeyPressed(key);
+      final correct = _typingProvider.onKeyPressed(key);
+      if (correct == true) {
+        _sfx.playKeystroke();
+      } else if (correct == false) {
+        _sfx.playIncorrect();
+      }
 
       // If exercise complete but not last, auto advance after a brief moment
       if (_typingProvider.isExerciseComplete && !_typingProvider.isFinished) {
@@ -110,13 +121,14 @@ class _TypingScreenState extends State<TypingScreen> {
       context,
       listen: false,
     );
-    progressProvider.recordAttempt(widget.lesson.id, stats);
+    progressProvider.recordAttempt(widget.lesson, stats);
+    _sfx.playCelebration();
 
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
         context.pushReplacement(
           '/lesson/${widget.lesson.id}/results',
-          extra: stats,
+          extra: (widget.lesson, stats),
         );
       }
     });
@@ -537,6 +549,7 @@ class _TypingScreenState extends State<TypingScreen> {
   }
 
   void _showQuitDialog() {
+    _typingProvider.pause();
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -550,6 +563,7 @@ class _TypingScreenState extends State<TypingScreen> {
     ).then((_) {
       // Restore focus to typing area after dialog closes
       if (mounted && !_showIntro) {
+        _typingProvider.resume();
         _focusNode.requestFocus();
       }
     });

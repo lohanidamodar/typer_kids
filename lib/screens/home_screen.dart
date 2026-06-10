@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme/app_colors.dart';
+import '../data/badges.dart';
+import '../data/practice_generator.dart';
 import '../providers/profile_provider.dart';
 import '../providers/progress_provider.dart';
 
@@ -42,7 +44,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _openSandbox();
     } else if (key == LogicalKeyboardKey.keyT) {
       _openTypingTest();
+    } else if (key == LogicalKeyboardKey.keyK) {
+      _openTrickyKeys();
     }
+  }
+
+  void _openTrickyKeys() {
+    final progress = Provider.of<ProgressProvider>(context, listen: false);
+    if (progress.trickyKeys.isEmpty) return;
+    context.push('/lesson/${PracticeGenerator.trickyKeysLessonId}');
   }
 
   void _startRecommendedLesson() {
@@ -112,9 +122,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 12),
                         _buildAllLessonsButton(context),
                         const SizedBox(height: 20),
-                        _buildActivities(context, useGrid: useGrid),
+                        _buildActivities(context, progress, useGrid: useGrid),
                         const SizedBox(height: 28),
                         _buildStatsCards(context, progress),
+                        const SizedBox(height: 16),
+                        _buildBadges(context, progress),
                         const SizedBox(height: 20),
                         _buildBottomButtons(context),
                         const SizedBox(height: 20),
@@ -323,7 +335,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActivities(BuildContext context, {bool useGrid = false}) {
+  Widget _buildActivities(
+    BuildContext context,
+    ProgressProvider progress, {
+    bool useGrid = false,
+  }) {
+    final trickyKeys = progress.trickyKeys;
     final cards = [
       _ActivityCard(
         emoji: '🎮',
@@ -349,6 +366,17 @@ class _HomeScreenState extends State<HomeScreen> {
         color: AppColors.primary,
         onTap: () => _openTypingTest(),
       ),
+      if (trickyKeys.isNotEmpty)
+        _ActivityCard(
+          emoji: '🔧',
+          title: 'Tricky Keys',
+          subtitle:
+              'Practice ${trickyKeys.map((k) => k.toUpperCase()).join(' ')} — '
+              'the keys you miss most',
+          shortcut: 'K',
+          color: AppColors.incorrect,
+          onTap: () => _openTrickyKeys(),
+        ),
     ];
 
     return Column(
@@ -397,7 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
             color: AppColors.starFilled,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: _StatCard(
             emoji: '📚',
@@ -406,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen> {
             color: AppColors.primary,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: _StatCard(
             emoji: '🎯',
@@ -417,7 +445,101 @@ class _HomeScreenState extends State<HomeScreen> {
             color: AppColors.accent,
           ),
         ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _StatCard(
+            emoji: '🔥',
+            label: 'Streak',
+            value: progress.currentStreak > 0
+                ? '${progress.currentStreak} day${progress.currentStreak == 1 ? '' : 's'}'
+                : '--',
+            color: AppColors.secondary,
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildBadges(BuildContext context, ProgressProvider progress) {
+    final earned = Badges.earned(progress);
+    if (earned.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.starFilled.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'My Badges',
+                style: GoogleFonts.fredoka(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${earned.length}/${Badges.all.length}',
+                style: GoogleFonts.nunito(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: earned
+                .map(
+                  (badge) => Tooltip(
+                    message: '${badge.title} — ${badge.description}',
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.starFilled.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            badge.emoji,
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            badge.title,
+                            style: GoogleFonts.nunito(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ),
     );
   }
 

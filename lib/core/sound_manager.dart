@@ -8,9 +8,11 @@ class SoundManager {
   factory SoundManager() => _instance;
   SoundManager._();
 
-  bool _enabled = true;
-  bool get enabled => _enabled;
-  set enabled(bool value) => _enabled = value;
+  /// SharedPreferences key for persisting the sound on/off setting.
+  static const String prefsKey = 'sound_enabled';
+
+  /// Whether sound effects are enabled (toggled in Settings).
+  bool enabled = true;
 
   /// Set to false if audio subsystem is unavailable (e.g. missing VC++ runtime).
   bool _audioAvailable = true;
@@ -34,7 +36,7 @@ class SoundManager {
   }
 
   Future<void> _play(String asset, {double volume = 0.5}) async {
-    if (!_enabled || !_audioAvailable) return;
+    if (!enabled || !_audioAvailable) return;
     try {
       final player = _getPlayer();
       await player.setVolume(volume);

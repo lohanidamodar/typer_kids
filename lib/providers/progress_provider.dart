@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/lesson_curriculum_selector.dart';
+import '../data/practice_generator.dart';
 import '../models/lesson.dart';
 import '../models/lesson_progress.dart';
 import '../models/typing_stats.dart';
@@ -111,13 +114,124 @@ class ProgressProvider extends ChangeNotifier {
   }
 
   /// Record a completed exercise attempt
-  Future<void> recordAttempt(String lessonId, TypingStats stats) async {
-    final current = getProgress(lessonId);
-    final updated = current.withNewAttempt(stats);
-    _progressMap[lessonId] = updated;
+  Future<void> recordAttempt(Lesson lesson, TypingStats stats) async {
+    await _recordKeyErrors(stats.errorsByKey);
+    await _recordPracticeDay();
+
+    if (lesson.id == PracticeGenerator.trickyKeysLessonId) {
+      // Dynamic practice lesson — not part of the curriculum, so don't store
+      // lesson progress. A solid run clears the practiced keys instead.
+      if (stats.accuracy >= 90) {
+        await _clearKeyErrors(lesson.focusKeys);
+      }
+      notifyListeners();
+      return;
+    }
+
+    final passed = stats.accuracy >= lesson.passingAccuracy;
+    final current = getProgress(lesson.id);
+    final updated = current.withNewAttempt(stats, passed: passed);
+    _progressMap[lesson.id] = updated;
     await _saveProgress(updated);
-    await setLastLesson(lessonId);
+    await setLastLesson(lesson.id);
     notifyListeners();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Daily practice streak
+  // ─────────────────────────────────────────────────────────────────────────
+
+  static String _dayKey(DateTime day) =>
+      '${day.year.toString().padLeft(4, '0')}-'
+      '${day.month.toString().padLeft(2, '0')}-'
+      '${day.day.toString().padLeft(2, '0')}';
+
+  List<String> get _practiceDays =>
+      _prefs?.getStringList('${_prefix}practice_days') ?? const [];
+
+  Future<void> _recordPracticeDay() async {
+    final today = _dayKey(DateTime.now());
+    final days = List<String>.from(_practiceDays);
+    if (!days.contains(today)) {
+      days.add(today);
+      // Keep the list bounded — only recent days matter for the streak.
+      if (days.length > 400) days.removeRange(0, days.length - 400);
+      await _prefs?.setStringList('${_prefix}practice_days', days);
+    }
+  }
+
+  /// Consecutive days practiced, ending today (or yesterday if the kid
+  /// hasn't practiced yet today, so the streak isn't shown as broken).
+  int get currentStreak =>
+      computeStreak(_practiceDays.toSet(), DateTime.now());
+
+  @visibleForTesting
+  static int computeStreak(Set<String> practicedDays, DateTime today) {
+    if (practicedDays.isEmpty) return 0;
+    var day = DateTime(today.year, today.month, today.day);
+    // A streak may end yesterday and still count — today isn't over yet.
+    if (!practicedDays.contains(_dayKey(day))) {
+      day = day.subtract(const Duration(days: 1));
+    }
+    var streak = 0;
+    while (practicedDays.contains(_dayKey(day))) {
+      streak++;
+      day = day.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Tricky keys — cumulative per-key error counts
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Cumulative miss counts per expected key for the current profile.
+  Map<String, int> get keyErrorCounts {
+    final json = _prefs?.getString('${_prefix}key_errors');
+    if (json == null) return const {};
+    try {
+      return (jsonDecode(json) as Map<String, dynamic>).map(
+        (k, v) => MapEntry(k, v as int),
+      );
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  Future<void> _recordKeyErrors(Map<String, int> errors) async {
+    if (errors.isEmpty) return;
+    final counts = Map<String, int>.from(keyErrorCounts);
+    errors.forEach((key, count) {
+      counts[key] = (counts[key] ?? 0) + count;
+    });
+    await _prefs?.setString('${_prefix}key_errors', jsonEncode(counts));
+  }
+
+  Future<void> _clearKeyErrors(List<String> keys) async {
+    final counts = Map<String, int>.from(keyErrorCounts);
+    counts.removeWhere((key, _) => keys.contains(key));
+    await _prefs?.setString('${_prefix}key_errors', jsonEncode(counts));
+  }
+
+  /// The keys this kid misses most (most-missed first), for extra practice.
+  /// Only keys with a few misses qualify — one slip isn't a pattern.
+  List<String> get trickyKeys {
+    final entries = keyErrorCounts.entries
+        .where((e) => e.value >= PracticeGenerator.minErrorsToQualify)
+        .toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    return entries
+        .take(PracticeGenerator.maxFocusKeys)
+        .map((e) => e.key)
+        .toList();
+  }
+
+  /// A dynamically generated lesson targeting the current tricky keys,
+  /// or null if there aren't any yet.
+  Lesson? get trickyKeysLesson {
+    final keys = trickyKeys;
+    if (keys.isEmpty) return null;
+    return PracticeGenerator.buildTrickyKeysLesson(keys);
   }
 
   /// Check if a lesson is unlocked (previous lesson completed or first lesson)
@@ -192,6 +306,8 @@ class ProgressProvider extends ChangeNotifier {
       await _prefs?.remove(key);
     }
     await _prefs?.remove('${_prefix}last_lesson_id');
+    await _prefs?.remove('${_prefix}practice_days');
+    await _prefs?.remove('${_prefix}key_errors');
     notifyListeners();
   }
 
@@ -206,12 +322,15 @@ class ProgressProvider extends ChangeNotifier {
 
   /// Record a score for a game. Returns true if it's a new high score.
   Future<bool> recordScore(String gameId, int score) async {
+    await _recordPracticeDay();
     final current = getHighScore(gameId);
     if (score > current) {
       await _prefs?.setInt('${_prefix}highscore_$gameId', score);
       notifyListeners();
       return true;
     }
+    // Still notify — the practice streak may have changed.
+    notifyListeners();
     return false;
   }
 
