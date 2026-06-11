@@ -178,7 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               context,
               children: [
                 _buildInfoRow('App', 'Typer Kids'),
-                _buildInfoRow('Version', '1.0.0'),
+                _buildInfoRow('Version', '1.2.0'),
                 _buildInfoRow('Made with', '❤️ and Flutter'),
               ],
             ),
