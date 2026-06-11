@@ -32,6 +32,12 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
 
+# audioplayers_windows (via C++/WinRT) still includes <experimental/coroutine>,
+# which newer MSVC STLs reject with a hard error (STL1011). This is the
+# Microsoft-documented opt-out; it applies to all plugin subdirectories too.
+# Remove once audioplayers_windows builds cleanly on current MSVC.
+add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # Compilation settings that should be applied to most targets.
 #
 # Be cautious about adding new options here, as plugins use this function by
