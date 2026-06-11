@@ -8,11 +8,16 @@ import '../../../data/word_lists.dart';
 import '../../../widgets/difficulty_card.dart';
 import '../../../widgets/stat_tiles.dart';
 
-/// Setup/menu view for the sandbox — story intro + difficulty selection.
+/// Setup/menu view for the sandbox — difficulty + story selection.
 class SandboxSetupView extends StatelessWidget {
   final FocusNode focusNode;
   final ContentDifficulty difficulty;
+  final List<StoryPassage> passages;
+
+  /// The chosen story, or null for "surprise me" (random each round).
+  final StoryPassage? selectedPassage;
   final ValueChanged<ContentDifficulty> onDifficultyChanged;
+  final ValueChanged<StoryPassage?> onPassageChanged;
   final VoidCallback onStart;
   final VoidCallback onBack;
 
@@ -20,7 +25,10 @@ class SandboxSetupView extends StatelessWidget {
     super.key,
     required this.focusNode,
     required this.difficulty,
+    required this.passages,
+    required this.selectedPassage,
     required this.onDifficultyChanged,
+    required this.onPassageChanged,
     required this.onStart,
     required this.onBack,
   });
@@ -129,6 +137,17 @@ class SandboxSetupView extends StatelessWidget {
                         );
                       }).toList(),
                     ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Pick a Story',
+                      style: GoogleFonts.fredoka(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildStoryPicker(),
                     const SizedBox(height: 32),
                     SizedBox(
                       width: 240,
@@ -170,8 +189,62 @@ class SandboxSetupView extends StatelessWidget {
       ),
     );
   }
-}
 
+  /// Dropdown of stories for the chosen difficulty, with a "surprise me"
+  /// option (null) that picks a random passage each round.
+  Widget _buildStoryPicker() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.secondary.withValues(alpha: 0.4),
+          width: 2,
+        ),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<StoryPassage?>(
+          value: selectedPassage,
+          isExpanded: true,
+          borderRadius: BorderRadius.circular(14),
+          icon: const Icon(
+            Icons.expand_more_rounded,
+            color: AppColors.secondary,
+          ),
+          style: GoogleFonts.nunito(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+          items: [
+            DropdownMenuItem<StoryPassage?>(
+              value: null,
+              child: Text(
+                '🎲 Surprise me!',
+                style: GoogleFonts.nunito(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.secondary,
+                ),
+              ),
+            ),
+            for (final passage in passages)
+              DropdownMenuItem<StoryPassage?>(
+                value: passage,
+                child: Text(
+                  '📖 ${passage.title} — ${passage.source}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+          onChanged: onPassageChanged,
+        ),
+      ),
+    );
+  }
+}
 /// Completion/results view for the sandbox — stars, stats, and actions.
 class SandboxDoneView extends StatelessWidget {
   final FocusNode focusNode;

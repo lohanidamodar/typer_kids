@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/sound_manager.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/sentence_lists.dart';
 import '../../data/word_lists.dart';
 import '../../providers/progress_provider.dart';
@@ -525,7 +526,7 @@ class _StorySprintScreenState extends State<StorySprintScreen> {
             // Already typed
             TextSpan(
               text: sentence.substring(0, _charIndex),
-              style: GoogleFonts.robotoMono(
+              style: AppTheme.typingTextStyle(
                 fontSize: fontSize,
                 fontWeight: FontWeight.w600,
                 color: AppColors.correct,
@@ -534,25 +535,26 @@ class _StorySprintScreenState extends State<StorySprintScreen> {
             // Current character
             TextSpan(
               text: sentence[_charIndex],
-              style: GoogleFonts.robotoMono(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w700,
-                color: _stumbled ? Colors.white : _accent,
-                backgroundColor: _stumbled
-                    ? AppColors.incorrect
-                    : _accent.withValues(alpha: 0.18),
-                decoration: TextDecoration.underline,
-                decorationColor: _accent,
-                decorationThickness: 3,
-              ),
+              style:
+                  AppTheme.typingTextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w700,
+                    color: _stumbled ? Colors.white : _accent,
+                    decoration: TextDecoration.underline,
+                    decorationColor: _accent,
+                  ).copyWith(
+                    backgroundColor: _stumbled
+                        ? AppColors.incorrect
+                        : _accent.withValues(alpha: 0.18),
+                    decorationThickness: 3,
+                  ),
             ),
             // Remaining
             if (_charIndex + 1 < sentence.length)
               TextSpan(
                 text: sentence.substring(_charIndex + 1),
-                style: GoogleFonts.robotoMono(
+                style: AppTheme.typingTextStyle(
                   fontSize: fontSize,
-                  fontWeight: FontWeight.w500,
                   color: AppColors.textPrimary,
                 ),
               ),

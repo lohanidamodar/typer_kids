@@ -188,6 +188,26 @@ class StoryContent {
           'Everyone who touched the goose got stuck to it. '
           'The boy walked to town with a funny parade behind him.',
     ),
+    StoryPassage(
+      title: 'The City Mouse and the Country Mouse',
+      source: 'Aesop\'s Fables',
+      text:
+          'A city mouse went to visit his cousin in the country. '
+          'The country mouse shared his simple beans and corn. '
+          'Then they went to the city to eat cake and cheese. '
+          'But a big cat chased them from the feast. '
+          'The country mouse said a safe home beats a fancy meal.',
+    ),
+    StoryPassage(
+      title: 'The Princess and the Pea',
+      source: 'Hans Christian Andersen',
+      text:
+          'One stormy night a girl knocked on the castle door. '
+          'She said she was a real princess, soaked by the rain. '
+          'The queen hid a tiny pea under twenty soft beds. '
+          'In the morning the girl said she could not sleep at all. '
+          'Only a true princess could feel a pea through twenty beds.',
+    ),
   ];
 
   // ── Medium passages ─────────────────────────────────────────────────────
@@ -351,6 +371,28 @@ class StoryContent {
           'At the age of four, she could read fast and well and she '
           'naturally began hankering after books. The only book in the '
           'whole of this enlightened household was a cooking guide.',
+    ),
+    StoryPassage(
+      title: 'Heidi',
+      source: 'Johanna Spyri',
+      text:
+          'High in the mountains, Heidi lived with her grandfather in a '
+          'little wooden hut. Every morning she ran out into the meadows '
+          'to help Peter watch the goats. She loved the bright flowers, '
+          'the clean wind, and the great eagles circling overhead. At '
+          'night she slept in the hayloft and watched the stars through '
+          'a round window.',
+    ),
+    StoryPassage(
+      title: 'The Tale of Peter Rabbit',
+      source: 'Beatrix Potter',
+      text:
+          'Peter Rabbit\'s mother warned him never to go into the garden, '
+          'but Peter was a very naughty little rabbit. He squeezed under '
+          'the gate and ate lettuces, beans, and radishes until he felt '
+          'quite sick. When the gardener spotted him, Peter ran all '
+          'around the garden, losing both his shoes and his little blue '
+          'jacket along the way.',
     ),
   ];
 
@@ -517,6 +559,28 @@ class StoryContent {
           'adventures. They were truly so wonderful that even now I am '
           'bewildered when I think of them. My uncle was a German, having '
           'married my mother\'s sister, an Englishwoman.',
+    ),
+    StoryPassage(
+      title: 'Around the World in Eighty Days',
+      source: 'Jules Verne',
+      text:
+          'Phileas Fogg was a man of exact habits; his whole day was '
+          'measured to the minute. Yet one evening, over a quiet game of '
+          'cards, he made an extraordinary wager: he would travel around '
+          'the entire world in just eighty days. That very night, with '
+          'his bewildered servant beside him, he boarded the train and '
+          'set out to circle the globe.',
+    ),
+    StoryPassage(
+      title: 'The Call of the Wild',
+      source: 'Jack London',
+      text:
+          'Buck did not read the newspapers, or he would have known that '
+          'trouble was brewing for every strong dog with a warm, long '
+          'coat. Far in the frozen North, men had found a yellow metal, '
+          'and they needed dogs: heavy dogs, with firm muscles and '
+          'furry coats to protect them from the bitter frost of the '
+          'long Arctic trails.',
     ),
   ];
 

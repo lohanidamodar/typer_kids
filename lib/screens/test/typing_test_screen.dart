@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/story_content.dart';
 import '../../data/word_lists.dart';
 import '../../providers/typing_provider.dart';
+import '../../widgets/passage_typing_display.dart';
 import '../../widgets/quit_dialog.dart';
 import '../../widgets/stat_tiles.dart';
 import 'widgets/time_duration_card.dart';
@@ -400,8 +401,18 @@ class _TypingTestScreenState extends State<TypingTestScreen> {
                 // Typing area
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Center(child: _buildTypingDisplay()),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 8,
+                    ),
+                    child: Center(
+                      child: PassageTypingDisplay(
+                        text: _text,
+                        charStates: _charStates,
+                        cursorPosition: _cursor,
+                        accentColor: AppColors.accent,
+                      ),
+                    ),
                   ),
                 ),
 
@@ -442,85 +453,6 @@ class _TypingTestScreenState extends State<TypingTestScreen> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTypingDisplay() {
-    // Show a window of text around the cursor for readability.
-    // We display up to 200 chars behind and 300 chars ahead of cursor.
-    final windowStart = (_cursor - 200).clamp(0, _text.length);
-    final windowEnd = (_cursor + 300).clamp(0, _text.length);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.accentLight, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.accent.withValues(alpha: 0.1),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: SingleChildScrollView(
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          runAlignment: WrapAlignment.center,
-          children: List.generate(windowEnd - windowStart, (offset) {
-            final i = windowStart + offset;
-            final char = _text[i];
-            final state = _charStates[i];
-
-            Color bgColor;
-            Color textColor;
-            switch (state) {
-              case CharState.correct:
-                bgColor = AppColors.correct.withValues(alpha: 0.2);
-                textColor = AppColors.primaryDark;
-              case CharState.incorrect:
-                bgColor = AppColors.incorrect.withValues(alpha: 0.3);
-                textColor = AppColors.incorrect;
-              case CharState.current:
-                bgColor = AppColors.accent.withValues(alpha: 0.3);
-                textColor = AppColors.textPrimary;
-              case CharState.pending:
-                bgColor = Colors.transparent;
-                textColor = Colors.grey.shade500;
-            }
-
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 2),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(3),
-                border: state == CharState.current
-                    ? const Border(
-                        bottom: BorderSide(color: AppColors.accent, width: 3),
-                      )
-                    : null,
-              ),
-              child: Text(
-                char == ' ' ? '␣' : char,
-                style: GoogleFonts.sourceCodePro(
-                  fontSize: 22,
-                  fontWeight: state == CharState.current
-                      ? FontWeight.w700
-                      : FontWeight.w500,
-                  color: textColor,
-                  letterSpacing: 1,
-                  decoration: state == CharState.incorrect
-                      ? TextDecoration.lineThrough
-                      : null,
-                ),
-              ),
-            );
-          }),
         ),
       ),
     );

@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/story_content.dart';
 import '../../data/word_lists.dart';
 import '../../providers/typing_provider.dart';
+import '../../widgets/passage_typing_display.dart';
 import '../../widgets/quit_dialog.dart';
 import '../../widgets/stat_tiles.dart';
 import 'widgets/sandbox_views.dart';
@@ -36,7 +37,8 @@ class _SandboxScreenState extends State<SandboxScreen> {
   _Phase _phase = _Phase.setup;
   ContentDifficulty _difficulty = ContentDifficulty.easy;
 
-  // Passage
+  // Passage — null choice means "surprise me" (random per round)
+  StoryPassage? _chosenPassage;
   StoryPassage? _passage;
   String _text = '';
 
@@ -77,7 +79,7 @@ class _SandboxScreenState extends State<SandboxScreen> {
 
   // ── Actions ──
   void _start() {
-    _passage = StoryContent.randomPassage(_difficulty);
+    _passage = _chosenPassage ?? StoryContent.randomPassage(_difficulty);
     _text = _passage!.text;
     _cursor = 0;
     _charStates = List.filled(_text.length, CharState.pending);
@@ -198,7 +200,14 @@ class _SandboxScreenState extends State<SandboxScreen> {
     return SandboxSetupView(
       focusNode: _setupFocusNode,
       difficulty: _difficulty,
-      onDifficultyChanged: (d) => setState(() => _difficulty = d),
+      passages: StoryContent.forDifficulty(_difficulty),
+      selectedPassage: _chosenPassage,
+      onDifficultyChanged: (d) => setState(() {
+        _difficulty = d;
+        // The chosen story belongs to the old difficulty's pool
+        _chosenPassage = null;
+      }),
+      onPassageChanged: (p) => setState(() => _chosenPassage = p),
       onStart: _start,
       onBack: () => context.pop(),
     );
@@ -313,6 +322,19 @@ class _SandboxScreenState extends State<SandboxScreen> {
                     ],
                   ),
                 ),
+                // Passage progress bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: _text.isEmpty ? 0 : _cursor / _text.length,
+                      minHeight: 6,
+                      backgroundColor: Colors.grey.shade200,
+                      color: AppColors.secondary,
+                    ),
+                  ),
+                ),
                 // Source
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
@@ -328,8 +350,18 @@ class _SandboxScreenState extends State<SandboxScreen> {
                 // Typing area
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Center(child: _buildTypingDisplay()),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    child: Center(
+                      child: PassageTypingDisplay(
+                        text: _text,
+                        charStates: _charStates,
+                        cursorPosition: _cursor,
+                        accentColor: AppColors.secondary,
+                      ),
+                    ),
                   ),
                 ),
                 // Focus prompt
@@ -369,82 +401,6 @@ class _SandboxScreenState extends State<SandboxScreen> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTypingDisplay() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.secondaryLight, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.secondary.withValues(alpha: 0.1),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: SingleChildScrollView(
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          runAlignment: WrapAlignment.center,
-          children: List.generate(_text.length, (i) {
-            final char = _text[i];
-            final state = _charStates[i];
-
-            Color bgColor;
-            Color textColor;
-            switch (state) {
-              case CharState.correct:
-                bgColor = AppColors.correct.withValues(alpha: 0.2);
-                textColor = AppColors.primaryDark;
-              case CharState.incorrect:
-                bgColor = AppColors.incorrect.withValues(alpha: 0.3);
-                textColor = AppColors.incorrect;
-              case CharState.current:
-                bgColor = AppColors.secondary.withValues(alpha: 0.3);
-                textColor = AppColors.textPrimary;
-              case CharState.pending:
-                bgColor = Colors.transparent;
-                textColor = Colors.grey.shade500;
-            }
-
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 2),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(3),
-                border: state == CharState.current
-                    ? const Border(
-                        bottom: BorderSide(
-                          color: AppColors.secondary,
-                          width: 3,
-                        ),
-                      )
-                    : null,
-              ),
-              child: Text(
-                char == ' ' ? '␣' : char,
-                style: GoogleFonts.sourceCodePro(
-                  fontSize: 22,
-                  fontWeight: state == CharState.current
-                      ? FontWeight.w700
-                      : FontWeight.w500,
-                  color: textColor,
-                  letterSpacing: 1,
-                  decoration: state == CharState.incorrect
-                      ? TextDecoration.lineThrough
-                      : null,
-                ),
-              ),
-            );
-          }),
         ),
       ),
     );

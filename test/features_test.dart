@@ -3,6 +3,7 @@ import 'package:typer_kids/data/badges.dart';
 import 'package:typer_kids/data/lesson_curriculum_comprehensive.dart';
 import 'package:typer_kids/data/practice_generator.dart';
 import 'package:typer_kids/data/sentence_lists.dart';
+import 'package:typer_kids/data/story_content.dart';
 import 'package:typer_kids/data/word_lists.dart';
 import 'package:typer_kids/models/lesson.dart';
 import 'package:typer_kids/models/typing_stats.dart';
@@ -372,6 +373,33 @@ void main() {
     test('shuffledFor returns the whole pool', () {
       final shuffled = SentenceLists.shuffledFor(ContentDifficulty.medium);
       expect(shuffled.toSet(), SentenceLists.medium.toSet());
+    });
+  });
+
+  group('StoryContent', () {
+    test('every passage is well-formed', () {
+      for (final d in ContentDifficulty.values) {
+        final pool = StoryContent.forDifficulty(d);
+        expect(pool.length, greaterThanOrEqualTo(10), reason: d.label);
+        for (final passage in pool) {
+          expect(passage.title.trim(), isNotEmpty);
+          expect(passage.source.trim(), isNotEmpty);
+          expect(passage.text.trim(), isNotEmpty, reason: passage.title);
+          // Double spaces are invisible on screen but block typing progress
+          expect(
+            passage.text.contains('  '),
+            isFalse,
+            reason: '${passage.title} contains a double space',
+          );
+          // Only characters a kid can actually type on a US keyboard
+          // (curly quotes or em-dashes would block progress forever)
+          expect(
+            RegExp(r'''^[a-zA-Z0-9 .,;:!?'"\-()]+$''').hasMatch(passage.text),
+            isTrue,
+            reason: '${passage.title} contains untypable characters',
+          );
+        }
+      }
     });
   });
 }

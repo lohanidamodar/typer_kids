@@ -48,11 +48,19 @@ Each game has 3 difficulty levels, high score tracking, sound effects, and visua
 - 3 difficulty levels with classic literature passages
 - Real-time WPM and accuracy tracking
 - Timer starts on first keypress
+- Book-style typing surface that follows your cursor as you type
 
 ### 🆓 Free Practice
 - Untimed sandbox mode with story passages
-- Elapsed timer, live WPM and accuracy
+- **Pick your story** from the library, or let the app surprise you
+- Elapsed timer, live WPM, accuracy, and a passage progress bar
 - Easy / Medium / Hard content from classic children's literature
+
+### 🔤 Typing Surface
+- All typing text uses **JetBrains Mono** — fixed-width so text never
+  shifts, with clear differences between l/1/I and 0/O
+- Words never break across lines, and the view scrolls with your cursor
+- Spaces show the ␣ symbol only when they're the next key or were mistyped
 
 ### 👤 Multi-Profile Support
 - Create and switch between multiple player profiles
