@@ -59,11 +59,32 @@ void main() {
         completedAt: DateTime.now(),
       );
 
-      progress = progress.withNewAttempt(stats);
+      progress = progress.withNewAttempt(stats, passed: true);
       expect(progress.completed, true);
       expect(progress.attempts, 1);
       expect(progress.bestAccuracy, stats.accuracy);
       expect(progress.bestWpm, stats.wpm);
+    });
+
+    test('failed attempt does not complete the lesson', () {
+      var progress = const LessonProgress(lessonId: 'test-02');
+
+      final stats = TypingStats(
+        totalCharacters: 50,
+        correctCharacters: 30,
+        incorrectCharacters: 20,
+        elapsed: const Duration(seconds: 30),
+        completedAt: DateTime.now(),
+      );
+
+      progress = progress.withNewAttempt(stats, passed: false);
+      expect(progress.completed, false);
+      expect(progress.attempts, 1);
+
+      // A later passing attempt completes it
+      progress = progress.withNewAttempt(stats, passed: true);
+      expect(progress.completed, true);
+      expect(progress.attempts, 2);
     });
 
     test('serializes and deserializes correctly', () {

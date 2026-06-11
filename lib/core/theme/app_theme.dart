@@ -7,6 +7,28 @@ import 'app_colors.dart';
 class AppTheme {
   AppTheme._();
 
+  /// The monospace style used for all text the kid actually types —
+  /// lessons, free practice, and the typing test. JetBrains Mono keeps
+  /// every character the same width (so text never shifts while typing)
+  /// and clearly distinguishes similar shapes like l, 1, I and 0, O.
+  static TextStyle typingTextStyle({
+    double fontSize = 24,
+    FontWeight fontWeight = FontWeight.w500,
+    Color color = AppColors.textPrimary,
+    double height = 1.6,
+    TextDecoration? decoration,
+    Color? decorationColor,
+  }) {
+    return GoogleFonts.jetBrainsMono(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: height,
+      decoration: decoration,
+      decorationColor: decorationColor,
+    );
+  }
+
   static ThemeData get theme {
     return ThemeData(
       useMaterial3: true,

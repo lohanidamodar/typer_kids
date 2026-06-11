@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../widgets/shortcut_badge.dart';
 
 /// Menu screen listing available typing games.
 class GameMenuScreen extends StatefulWidget {
@@ -35,6 +36,10 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
       context.push('/games/word-bubbles');
     } else if (key == LogicalKeyboardKey.digit4) {
       context.push('/games/speed-chase');
+    } else if (key == LogicalKeyboardKey.digit5) {
+      context.push('/games/key-critters');
+    } else if (key == LogicalKeyboardKey.digit6) {
+      context.push('/games/story-sprint');
     }
   }
 
@@ -104,6 +109,26 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                   compact: !isTall,
                   onTap: () => context.push('/games/speed-chase'),
                 ),
+                _GameCard(
+                  emoji: '🐹',
+                  title: 'Key Critters',
+                  description:
+                      'Bonk the critters by pressing their keys!',
+                  shortcut: '5',
+                  color: const Color(0xFF43A047),
+                  compact: !isTall,
+                  onTap: () => context.push('/games/key-critters'),
+                ),
+                _GameCard(
+                  emoji: '🏃',
+                  title: 'Story Sprint',
+                  description:
+                      'Type full sentences to sprint down the track!',
+                  shortcut: '6',
+                  color: const Color(0xFFFB8C00),
+                  compact: !isTall,
+                  onTap: () => context.push('/games/story-sprint'),
+                ),
               ];
 
               return Center(
@@ -133,7 +158,7 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                                   style: GoogleFonts.fredoka(fontSize: 16),
                                 ),
                                 const SizedBox(width: 6),
-                                _KeyBadge('Esc'),
+                                ShortcutBadge('Esc'),
                               ],
                             ),
                             style: TextButton.styleFrom(
@@ -164,24 +189,22 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                         SizedBox(height: sectionGap),
                         // ── Game cards ──
                         if (useGrid) ...[
-                          // 2x2 grid
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: gameCards[0]),
-                              SizedBox(width: cardGap),
-                              Expanded(child: gameCards[1]),
-                            ],
-                          ),
-                          SizedBox(height: cardGap),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: gameCards[2]),
-                              SizedBox(width: cardGap),
-                              Expanded(child: gameCards[3]),
-                            ],
-                          ),
+                          // Two cards per row
+                          for (var i = 0; i < gameCards.length; i += 2) ...[
+                            if (i > 0) SizedBox(height: cardGap),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: gameCards[i]),
+                                SizedBox(width: cardGap),
+                                Expanded(
+                                  child: i + 1 < gameCards.length
+                                      ? gameCards[i + 1]
+                                      : const SizedBox.shrink(),
+                                ),
+                              ],
+                            ),
+                          ],
                         ] else ...[
                           // Vertical list
                           for (var i = 0; i < gameCards.length; i++) ...[
@@ -281,36 +304,11 @@ class _GameCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _KeyBadge(shortcut),
+              ShortcutBadge(shortcut),
               const SizedBox(width: 4),
               Icon(Icons.arrow_forward_ios_rounded, size: 18, color: color),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _KeyBadge extends StatelessWidget {
-  final String label;
-  const _KeyBadge(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: AppColors.primary,
         ),
       ),
     );

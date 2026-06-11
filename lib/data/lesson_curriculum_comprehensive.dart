@@ -1205,7 +1205,7 @@ class ComprehensiveLessonCurriculum {
       funTip: 'You have come so far. Keep going.',
       exercises: const [
         'extraordinary unbelievable magnificent',
-        'constellation encyclopedia encyclopedia',
+        'constellation encyclopedia imagination',
         'archaeological communication professional',
         'environmental international determination',
         'congratulations understanding accomplished',
@@ -1315,6 +1315,258 @@ class ComprehensiveLessonCurriculum {
         'children laughed as they chased butterflies.',
         'the old lighthouse stood guard over the shore.',
         'every day brings a new chance to learn and grow.',
+      ],
+    );
+
+    // ------------------------------------------------------------
+    // 21) Punctuation pack – shifted punctuation marks
+    // 4 lessons
+    // NOTE: new lessons must always be appended at the end — lesson IDs
+    // are assigned by order, and saved progress is keyed by ID.
+    // ------------------------------------------------------------
+    addLesson(
+      title: 'Question Marks',
+      description: 'Ask questions with the ? key.',
+      category: LessonCategory.numbers,
+      difficulty: LessonDifficulty.advanced,
+      focusKeys: ['?'],
+      emoji: '❓',
+      funTip: 'Hold Shift and press / to make a question mark.',
+      exercises: const [
+        'who? what? when?',
+        'where is my hat?',
+        'can you help me?',
+        'what time is it?',
+        'do you like to type?',
+      ],
+    );
+
+    addLesson(
+      title: 'Excited Lines',
+      description: 'Show excitement with the ! key.',
+      category: LessonCategory.numbers,
+      difficulty: LessonDifficulty.advanced,
+      focusKeys: ['!'],
+      emoji: '❗',
+      funTip: 'Hold Shift and press 1 to make an exclamation mark.',
+      exercises: const [
+        'wow! yay! hooray!',
+        'we won the game!',
+        'look at that rainbow!',
+        'this is so much fun!',
+        'you are doing great!',
+      ],
+    );
+
+    addLesson(
+      title: 'Apostrophes',
+      description: "Practice words with the ' key.",
+      category: LessonCategory.numbers,
+      difficulty: LessonDifficulty.advanced,
+      focusKeys: ["'"],
+      emoji: '✏️',
+      funTip: 'The apostrophe sits right next to your right pinky.',
+      exercises: const [
+        "it's don't can't won't",
+        "i'm so happy today",
+        "that's my favorite book",
+        "let's play outside",
+        "we're all done, isn't that great",
+      ],
+    );
+
+    addLesson(
+      title: 'Punctuation Mix',
+      description: 'Mix periods, commas, and more.',
+      category: LessonCategory.numbers,
+      difficulty: LessonDifficulty.advanced,
+      focusKeys: ['.', ',', '?', '!'],
+      emoji: '🎪',
+      funTip: 'Every mark has a job. Type each one with care.',
+      exercises: const [
+        'stop. wait, go!',
+        'ready? set, go!',
+        "it's time to play, isn't it?",
+        'one, two, three. blast off!',
+        "wow! you did it. let's celebrate, ok?",
+      ],
+    );
+
+    // ------------------------------------------------------------
+    // 22) Fun themes – sentences kids love
+    // 6 lessons
+    // ------------------------------------------------------------
+    addLesson(
+      title: 'Fun: Dinosaurs',
+      description: 'Type sentences about dinosaurs.',
+      category: LessonCategory.sentences,
+      difficulty: LessonDifficulty.intermediate,
+      focusKeys: [],
+      emoji: '🦖',
+      funTip: 'Dinosaurs ruled the earth long, long ago.',
+      exercises: const [
+        'the t rex had tiny arms.',
+        'some dinosaurs ate only plants.',
+        'a triceratops had three horns.',
+        'dinosaur bones are called fossils.',
+        'the biggest dinosaurs were longer than a bus.',
+      ],
+    );
+
+    addLesson(
+      title: 'Fun: Robots',
+      description: 'Type sentences about robots.',
+      category: LessonCategory.sentences,
+      difficulty: LessonDifficulty.intermediate,
+      focusKeys: [],
+      emoji: '🤖',
+      funTip: 'Beep boop! Robots follow instructions, just like typing.',
+      exercises: const [
+        'robots can dance and beep.',
+        'a robot arm builds cars.',
+        'some robots clean the floor.',
+        'robots explore deep oceans and space.',
+        'maybe one day you will build a robot.',
+      ],
+    );
+
+    addLesson(
+      title: 'Fun: Sports',
+      description: 'Type sentences about sports.',
+      category: LessonCategory.sentences,
+      difficulty: LessonDifficulty.intermediate,
+      focusKeys: [],
+      emoji: '⚽',
+      funTip: 'Typing is a sport for your fingers. Warm up!',
+      exercises: const [
+        'we kick the ball to score.',
+        'the swimmer dove into the pool.',
+        'she hit a home run today.',
+        'the team passed the ball fast.',
+        'practice makes every player better.',
+      ],
+    );
+
+    addLesson(
+      title: 'Fun: Music',
+      description: 'Type sentences about music.',
+      category: LessonCategory.sentences,
+      difficulty: LessonDifficulty.intermediate,
+      focusKeys: [],
+      emoji: '🎵',
+      funTip: 'Typing has rhythm too. Find your beat!',
+      exercises: const [
+        'the drummer keeps the beat.',
+        'we sing songs around the fire.',
+        'a piano has black and white keys.',
+        'the band played a happy tune.',
+        'music makes everyone want to dance.',
+      ],
+    );
+
+    addLesson(
+      title: 'Fun: Travel',
+      description: 'Type sentences about travel.',
+      category: LessonCategory.sentences,
+      difficulty: LessonDifficulty.intermediate,
+      focusKeys: [],
+      emoji: '✈️',
+      funTip: 'Every sentence is a little journey.',
+      exercises: const [
+        'the train rolls down the track.',
+        'we packed our bags for the trip.',
+        'the plane flies above the clouds.',
+        'a map shows us where to go.',
+        'travel helps us learn about the world.',
+      ],
+    );
+
+    addLesson(
+      title: 'Fun: Birthday',
+      description: 'Type sentences about birthdays.',
+      category: LessonCategory.sentences,
+      difficulty: LessonDifficulty.intermediate,
+      focusKeys: [],
+      emoji: '🎂',
+      funTip: 'Type like every day is a celebration.',
+      exercises: const [
+        'we baked a chocolate cake.',
+        'blow out all the candles.',
+        'the balloons float to the ceiling.',
+        'everyone sang a birthday song.',
+        'she opened presents with a big smile.',
+      ],
+    );
+
+    // ------------------------------------------------------------
+    // 23) Story time – each lesson is one tiny story
+    // 4 lessons
+    // ------------------------------------------------------------
+    addLesson(
+      title: 'Story: The Lost Kite',
+      description: 'Type a tiny story, line by line.',
+      category: LessonCategory.sentences,
+      difficulty: LessonDifficulty.advanced,
+      focusKeys: [],
+      emoji: '🪁',
+      funTip: 'Each line continues the story. Keep the flow going!',
+      exercises: const [
+        'mia flew her red kite at the park.',
+        'a big wind pulled the string away.',
+        'the kite landed high in a tree.',
+        'her friend leo climbed up to get it.',
+        'they flew the kite together until sunset.',
+      ],
+    );
+
+    addLesson(
+      title: 'Story: The Brave Mouse',
+      description: 'Type a tiny story, line by line.',
+      category: LessonCategory.sentences,
+      difficulty: LessonDifficulty.advanced,
+      focusKeys: [],
+      emoji: '🐭',
+      funTip: 'Small heroes can do big things.',
+      exercises: const [
+        'a small mouse lived under the stairs.',
+        'one night she heard a sad meow.',
+        'a kitten was stuck behind a box.',
+        'the brave mouse pushed with all her might.',
+        'the kitten was free, and they became friends.',
+      ],
+    );
+
+    addLesson(
+      title: 'Story: The Secret Garden',
+      description: 'Type a tiny story, line by line.',
+      category: LessonCategory.sentences,
+      difficulty: LessonDifficulty.advanced,
+      focusKeys: [],
+      emoji: '🌷',
+      funTip: 'Stories grow one sentence at a time.',
+      exercises: const [
+        'sam found an old gate behind the school.',
+        'the gate creaked open into a garden.',
+        'flowers of every color filled the air.',
+        'a family of rabbits hopped past his feet.',
+        'sam promised to keep the garden a secret.',
+      ],
+    );
+
+    addLesson(
+      title: 'Story: The Moon Trip',
+      description: 'Type a tiny story, line by line.',
+      category: LessonCategory.sentences,
+      difficulty: LessonDifficulty.advanced,
+      focusKeys: [],
+      emoji: '🌙',
+      funTip: 'Finish the story to finish your training!',
+      exercises: const [
+        'zoe built a rocket out of boxes.',
+        'tonight was the night to visit the moon.',
+        'three, two, one, blast off she shouted.',
+        'she bounced over craters and waved at stars.',
+        'then mom called, and the astronaut came for dinner.',
       ],
     );
 

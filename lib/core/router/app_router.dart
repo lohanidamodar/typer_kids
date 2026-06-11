@@ -3,12 +3,17 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/lesson_curriculum_selector.dart';
+import '../../data/practice_generator.dart';
+import '../../models/lesson.dart';
 import '../../models/typing_stats.dart';
 import '../../providers/profile_provider.dart';
+import '../../providers/progress_provider.dart';
 import '../../screens/games/defend_temple_screen.dart';
 import '../../screens/games/falling_words_screen.dart';
 import '../../screens/games/game_menu_screen.dart';
+import '../../screens/games/key_critters_screen.dart';
 import '../../screens/games/speed_chase_screen.dart';
+import '../../screens/games/story_sprint_screen.dart';
 import '../../screens/games/word_bubbles_screen.dart';
 import '../../screens/home_screen.dart';
 import '../../screens/lesson_list_screen.dart';
@@ -36,6 +41,20 @@ class AppRouter {
   AppRouter._();
 
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
+
+  /// Resolve a lesson ID to a lesson — either from the curriculum or, for
+  /// the special tricky-keys ID, generated from the profile's missed keys.
+  static Lesson? _resolveLesson(BuildContext context, String lessonId) {
+    final lesson = LessonCurriculum.byId(lessonId);
+    if (lesson != null) return lesson;
+    if (lessonId == PracticeGenerator.trickyKeysLessonId) {
+      return Provider.of<ProgressProvider>(
+        context,
+        listen: false,
+      ).trickyKeysLesson;
+    }
+    return null;
+  }
 
   static GoRouter router(ProfileProvider profileProvider) => GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -73,7 +92,7 @@ class AppRouter {
         name: 'lesson',
         builder: (context, state) {
           final lessonId = state.pathParameters['lessonId']!;
-          final lesson = LessonCurriculum.byId(lessonId);
+          final lesson = _resolveLesson(context, lessonId);
           if (lesson == null) {
             // Invalid lesson ID — show home
             return const HomeScreen();
@@ -87,21 +106,17 @@ class AppRouter {
             parentNavigatorKey: _rootNavigatorKey,
             redirect: (context, state) {
               final lessonId = state.pathParameters['lessonId'];
-              final stats = state.extra as TypingStats?;
-              // If there are no stats (e.g. page refresh on web), redirect
-              // to the lesson so the user can play it again.
-              if (lessonId == null || LessonCurriculum.byId(lessonId) == null) {
+              // If there is no lesson/stats payload (e.g. page refresh on
+              // web), redirect to the lesson so the user can play it again.
+              if (state.extra is (Lesson, TypingStats)) return null;
+              if (lessonId == null ||
+                  _resolveLesson(context, lessonId) == null) {
                 return '/';
               }
-              if (stats == null) {
-                return '/lesson/$lessonId';
-              }
-              return null; // allow
+              return '/lesson/$lessonId';
             },
             builder: (context, state) {
-              final lessonId = state.pathParameters['lessonId']!;
-              final lesson = LessonCurriculum.byId(lessonId)!;
-              final stats = state.extra as TypingStats;
+              final (lesson, stats) = state.extra as (Lesson, TypingStats);
               return ResultsScreen(lesson: lesson, stats: stats);
             },
           ),
@@ -140,6 +155,18 @@ class AppRouter {
             name: 'defend-temple',
             parentNavigatorKey: _rootNavigatorKey,
             builder: (context, state) => const DefendTempleScreen(),
+          ),
+          GoRoute(
+            path: 'key-critters',
+            name: 'key-critters',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const KeyCrittersScreen(),
+          ),
+          GoRoute(
+            path: 'story-sprint',
+            name: 'story-sprint',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const StorySprintScreen(),
           ),
         ],
       ),

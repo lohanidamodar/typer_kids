@@ -19,8 +19,10 @@ class TypingProvider extends ChangeNotifier {
   int _totalCorrect = 0;
   int _totalIncorrect = 0;
   int _totalTyped = 0;
+  final Map<String, int> _errorsByKey = {};
 
   DateTime? _startTime;
+  DateTime? _pauseStart;
   Timer? _timer;
   Duration _elapsed = Duration.zero;
 
@@ -67,10 +69,12 @@ class TypingProvider extends ChangeNotifier {
     _totalCorrect = 0;
     _totalIncorrect = 0;
     _totalTyped = 0;
+    _errorsByKey.clear();
     _isFinished = false;
     _isPaused = false;
     _elapsed = Duration.zero;
     _startTime = null;
+    _pauseStart = null;
     _timer?.cancel();
     _timer = null;
     _loadExercise();
@@ -92,10 +96,12 @@ class TypingProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Handle a key press event
-  void onKeyPressed(String key) {
-    if (_isFinished || _isPaused) return;
-    if (_cursorPosition >= _currentText.length) return;
+  /// Handle a key press event.
+  /// Returns true if the key matched the expected character, false if it was
+  /// a mistake, or null if the input was ignored.
+  bool? onKeyPressed(String key) {
+    if (_isFinished || _isPaused) return null;
+    if (_cursorPosition >= _currentText.length) return null;
 
     // Start timer on first keypress
     if (_startTime == null) {
@@ -106,12 +112,18 @@ class TypingProvider extends ChangeNotifier {
     final expected = _currentText[_cursorPosition];
     _totalTyped++;
 
-    if (key == expected) {
+    final correct = key == expected;
+    if (correct) {
       _charStates[_cursorPosition] = CharState.correct;
       _totalCorrect++;
     } else {
       _charStates[_cursorPosition] = CharState.incorrect;
       _totalIncorrect++;
+      // Don't count the space bar as a "tricky key" — misses there are
+      // usually rhythm mistakes, not finger placement problems.
+      if (expected != ' ') {
+        _errorsByKey[expected] = (_errorsByKey[expected] ?? 0) + 1;
+      }
     }
 
     _cursorPosition++;
@@ -127,6 +139,7 @@ class TypingProvider extends ChangeNotifier {
     }
 
     notifyListeners();
+    return correct;
   }
 
   void _onExerciseComplete() {
@@ -164,13 +177,22 @@ class TypingProvider extends ChangeNotifier {
 
   /// Pause the lesson
   void pause() {
+    if (_isPaused) return;
     _isPaused = true;
+    _pauseStart = DateTime.now();
     notifyListeners();
   }
 
   /// Resume the lesson
   void resume() {
+    if (!_isPaused) return;
     _isPaused = false;
+    // Shift the start time forward by the paused duration so the elapsed
+    // time doesn't include the time spent paused.
+    if (_pauseStart != null && _startTime != null) {
+      _startTime = _startTime!.add(DateTime.now().difference(_pauseStart!));
+    }
+    _pauseStart = null;
     notifyListeners();
   }
 
@@ -181,6 +203,7 @@ class TypingProvider extends ChangeNotifier {
     incorrectCharacters: _totalIncorrect,
     elapsed: _elapsed,
     completedAt: DateTime.now(),
+    errorsByKey: Map.unmodifiable(_errorsByKey),
   );
 
   /// Reset and clean up
@@ -192,6 +215,8 @@ class TypingProvider extends ChangeNotifier {
     _isPaused = false;
     _elapsed = Duration.zero;
     _startTime = null;
+    _pauseStart = null;
+    _errorsByKey.clear();
     notifyListeners();
   }
 

@@ -5,8 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme/app_colors.dart';
+import '../data/practice_generator.dart';
 import '../providers/profile_provider.dart';
 import '../providers/progress_provider.dart';
+import '../widgets/home/activity_card.dart';
+import '../widgets/home/badges_panel.dart';
+import '../widgets/home/stat_card.dart';
+import '../widgets/shortcut_badge.dart';
 
 /// The main home screen with fun kid-friendly design
 class HomeScreen extends StatefulWidget {
@@ -42,7 +47,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _openSandbox();
     } else if (key == LogicalKeyboardKey.keyT) {
       _openTypingTest();
+    } else if (key == LogicalKeyboardKey.keyK) {
+      _openTrickyKeys();
     }
+  }
+
+  void _openTrickyKeys() {
+    final progress = Provider.of<ProgressProvider>(context, listen: false);
+    if (progress.trickyKeys.isEmpty) return;
+    context.push('/lesson/${PracticeGenerator.trickyKeysLessonId}');
   }
 
   void _startRecommendedLesson() {
@@ -112,9 +125,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 12),
                         _buildAllLessonsButton(context),
                         const SizedBox(height: 20),
-                        _buildActivities(context, useGrid: useGrid),
+                        _buildActivities(context, progress, useGrid: useGrid),
                         const SizedBox(height: 28),
                         _buildStatsCards(context, progress),
+                        const SizedBox(height: 16),
+                        BadgesPanel(progress: progress),
                         const SizedBox(height: 20),
                         _buildBottomButtons(context),
                         const SizedBox(height: 20),
@@ -276,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      _ShortcutBadge(label: 'Enter', light: true),
+                      ShortcutBadge('Enter', light: true),
                     ],
                   ),
                   Text(
@@ -309,7 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Text('All Lessons', style: GoogleFonts.fredoka(fontSize: 18)),
             const SizedBox(width: 8),
-            _ShortcutBadge(label: 'L'),
+            ShortcutBadge('L'),
           ],
         ),
         style: OutlinedButton.styleFrom(
@@ -323,9 +338,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildActivities(BuildContext context, {bool useGrid = false}) {
+  Widget _buildActivities(
+    BuildContext context,
+    ProgressProvider progress, {
+    bool useGrid = false,
+  }) {
+    final trickyKeys = progress.trickyKeys;
     final cards = [
-      _ActivityCard(
+      ActivityCard(
         emoji: '🎮',
         title: 'Typing Games',
         subtitle: 'Have fun while you practice!',
@@ -333,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
         color: AppColors.accent,
         onTap: () => _openGames(),
       ),
-      _ActivityCard(
+      ActivityCard(
         emoji: '📖',
         title: 'Free Practice',
         subtitle: 'Type classic stories at your pace',
@@ -341,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
         color: AppColors.secondary,
         onTap: () => _openSandbox(),
       ),
-      _ActivityCard(
+      ActivityCard(
         emoji: '⏱️',
         title: 'Typing Test',
         subtitle: 'Test your speed with a time limit',
@@ -349,6 +369,17 @@ class _HomeScreenState extends State<HomeScreen> {
         color: AppColors.primary,
         onTap: () => _openTypingTest(),
       ),
+      if (trickyKeys.isNotEmpty)
+        ActivityCard(
+          emoji: '🔧',
+          title: 'Tricky Keys',
+          subtitle:
+              'Practice ${trickyKeys.map((k) => k.toUpperCase()).join(' ')} — '
+              'the keys you miss most',
+          shortcut: 'K',
+          color: AppColors.incorrect,
+          onTap: () => _openTrickyKeys(),
+        ),
     ];
 
     return Column(
@@ -390,31 +421,42 @@ class _HomeScreenState extends State<HomeScreen> {
     return Row(
       children: [
         Expanded(
-          child: _StatCard(
+          child: StatCard(
             emoji: '⭐',
             label: 'Stars',
             value: '${progress.totalStars}',
             color: AppColors.starFilled,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
-          child: _StatCard(
+          child: StatCard(
             emoji: '📚',
             label: 'Lessons',
             value: '${progress.completedLessons}/${progress.totalLessons}',
             color: AppColors.primary,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
-          child: _StatCard(
+          child: StatCard(
             emoji: '🎯',
             label: 'Accuracy',
             value: progress.averageAccuracy > 0
                 ? '${progress.averageAccuracy.toStringAsFixed(0)}%'
                 : '--',
             color: AppColors.accent,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: StatCard(
+            emoji: '🔥',
+            label: 'Streak',
+            value: progress.currentStreak > 0
+                ? '${progress.currentStreak} day${progress.currentStreak == 1 ? '' : 's'}'
+                : '--',
+            color: AppColors.secondary,
           ),
         ),
       ],
@@ -443,7 +485,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 4),
-            _ShortcutBadge(label: 'P'),
+            ShortcutBadge('P'),
           ],
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -475,7 +517,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(width: 6),
-              _ShortcutBadge(label: 'P'),
+              ShortcutBadge('P'),
             ],
           ),
         ),
@@ -498,173 +540,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(width: 6),
-              _ShortcutBadge(label: 'S'),
+              ShortcutBadge('S'),
             ],
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ShortcutBadge extends StatelessWidget {
-  final String label;
-  final bool light;
-  const _ShortcutBadge({required this.label, this.light = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: light
-            ? Colors.white.withValues(alpha: 0.25)
-            : AppColors.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: light
-              ? Colors.white.withValues(alpha: 0.4)
-              : AppColors.primary.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: light ? Colors.white : AppColors.primary,
-        ),
-      ),
-    );
-  }
-}
-
-class _ActivityCard extends StatelessWidget {
-  final String emoji;
-  final String title;
-  final String subtitle;
-  final String shortcut;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _ActivityCard({
-    required this.emoji,
-    required this.title,
-    required this.subtitle,
-    required this.shortcut,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: color.withValues(alpha: 0.3)),
-            boxShadow: [
-              BoxShadow(
-                color: color.withValues(alpha: 0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 32)),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.fredoka(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.nunito(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _ShortcutBadge(label: shortcut),
-              const SizedBox(width: 6),
-              Icon(Icons.arrow_forward_ios_rounded, size: 16, color: color),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String emoji;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatCard({
-    required this.emoji,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 26)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: GoogleFonts.fredoka(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
-          Text(
-            label,
-            style: GoogleFonts.nunito(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

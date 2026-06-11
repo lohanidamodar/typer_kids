@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/router/app_router.dart';
+import 'core/sound_manager.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/profile_provider.dart';
 import 'providers/progress_provider.dart';
@@ -20,6 +22,10 @@ void main() async {
   final progressProvider = ProgressProvider();
   // Load SharedPreferences instance, then load data for the active profile
   await progressProvider.init(profileId: profileProvider.activeProfileId ?? '');
+
+  // Restore the saved sound preference (defaults to on)
+  final prefs = await SharedPreferences.getInstance();
+  SoundManager().enabled = prefs.getBool(SoundManager.prefsKey) ?? true;
 
   runApp(
     TyperKidsApp(

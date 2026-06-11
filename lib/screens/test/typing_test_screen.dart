@@ -9,28 +9,17 @@ import '../../core/theme/app_colors.dart';
 import '../../data/story_content.dart';
 import '../../data/word_lists.dart';
 import '../../providers/typing_provider.dart';
+import '../../widgets/passage_typing_display.dart';
+import '../../widgets/quit_dialog.dart';
+import '../../widgets/stat_tiles.dart';
+import 'widgets/time_duration_card.dart';
+import 'widgets/typing_test_views.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Phases
 // ─────────────────────────────────────────────────────────────────────────────
 
 enum _Phase { setup, typing, done }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Time durations offered in setup
-// ─────────────────────────────────────────────────────────────────────────────
-
-enum _TestDuration {
-  seconds30(30, '30 s', '⚡'),
-  minute1(60, '1 min', '⏱️'),
-  minutes2(120, '2 min', '🕐'),
-  minutes5(300, '5 min', '🕔');
-
-  const _TestDuration(this.seconds, this.label, this.emoji);
-  final int seconds;
-  final String label;
-  final String emoji;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Screen
@@ -48,7 +37,7 @@ class _TypingTestScreenState extends State<TypingTestScreen> {
   // ── State ──
   _Phase _phase = _Phase.setup;
   ContentDifficulty _difficulty = ContentDifficulty.easy;
-  _TestDuration _duration = _TestDuration.minute1;
+  TestDuration _duration = TestDuration.minute1;
 
   // Passage — we chain multiple passages to ensure there's enough text for
   // the entire test duration.
@@ -200,9 +189,11 @@ class _TypingTestScreenState extends State<TypingTestScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _QuitDialog(
+      builder: (ctx) => QuitDialog(
+        title: 'End Test?',
+        message: 'Your test results won\'t be saved.',
         onStay: () => Navigator.of(ctx).pop(),
-        onLeave: () {
+        onQuit: () {
           Navigator.of(ctx).pop();
           if (mounted) context.pop();
         },
@@ -235,209 +226,28 @@ class _TypingTestScreenState extends State<TypingTestScreen> {
   @override
   Widget build(BuildContext context) {
     return switch (_phase) {
-      _Phase.setup => _buildSetup(),
-      _Phase.typing => _buildTyping(),
-      _Phase.done => _buildDone(),
-    };
-  }
-
-  // ── Setup ─────────────────────────────────────────────────────────────────
-
-  void _handleSetupKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.escape) {
-      context.pop();
-    } else if (key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.space) {
-      _start();
-    } else if (key == LogicalKeyboardKey.digit1) {
-      setState(() => _difficulty = ContentDifficulty.easy);
-    } else if (key == LogicalKeyboardKey.digit2) {
-      setState(() => _difficulty = ContentDifficulty.medium);
-    } else if (key == LogicalKeyboardKey.digit3) {
-      setState(() => _difficulty = ContentDifficulty.hard);
-    } else if (key == LogicalKeyboardKey.keyA) {
-      setState(() => _duration = _TestDuration.seconds30);
-    } else if (key == LogicalKeyboardKey.keyB) {
-      setState(() => _duration = _TestDuration.minute1);
-    } else if (key == LogicalKeyboardKey.keyC) {
-      setState(() => _duration = _TestDuration.minutes2);
-    } else if (key == LogicalKeyboardKey.keyD) {
-      setState(() => _duration = _TestDuration.minutes5);
-    }
-  }
-
-  Widget _buildSetup() {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: KeyboardListener(
+      _Phase.setup => TypingTestSetup(
         focusNode: _setupFocusNode,
-        autofocus: true,
-        onKeyEvent: _handleSetupKey,
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Column(
-                  children: [
-                    // Back
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () => context.pop(),
-                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Back',
-                              style: GoogleFonts.fredoka(fontSize: 16),
-                            ),
-                            const SizedBox(width: 6),
-                            _keyBadge('Esc', AppColors.textSecondary),
-                          ],
-                        ),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('⏱️', style: TextStyle(fontSize: 56)),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Typing Test',
-                      style: GoogleFonts.fredoka(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.accent,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Test your typing speed and accuracy!',
-                      style: GoogleFonts.nunito(
-                        fontSize: 16,
-                        color: AppColors.textSecondary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 28),
-
-                    // ── Difficulty selector ──
-                    Text(
-                      'Difficulty',
-                      style: GoogleFonts.fredoka(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: ContentDifficulty.values.map((d) {
-                        final selected = d == _difficulty;
-                        return Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              left: d.index == 0 ? 0 : 6,
-                              right: d.index == 2 ? 0 : 6,
-                            ),
-                            child: _DifficultyCard(
-                              difficulty: d,
-                              index: d.index + 1,
-                              selected: selected,
-                              onTap: () => setState(() => _difficulty = d),
-                              accentColor: AppColors.accent,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // ── Duration selector ──
-                    Text(
-                      'Duration',
-                      style: GoogleFonts.fredoka(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: _TestDuration.values.map((d) {
-                        final selected = d == _duration;
-                        final shortcut = String.fromCharCode(
-                          65 + d.index, // A, B, C, D
-                        );
-                        return Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                              left: d.index == 0 ? 0 : 4,
-                              right: d.index == _TestDuration.values.length - 1
-                                  ? 0
-                                  : 4,
-                            ),
-                            child: _TimeDurationCard(
-                              duration: d,
-                              shortcut: shortcut,
-                              selected: selected,
-                              onTap: () => setState(() => _duration = d),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 32),
-
-                    // ── Start button ──
-                    SizedBox(
-                      width: 240,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: _start,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accent,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 4,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.play_arrow_rounded, size: 28),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                'Start Test',
-                                style: GoogleFonts.fredoka(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            _keyBadge('Enter', Colors.white),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
+        difficulty: _difficulty,
+        duration: _duration,
+        onDifficultyChanged: (d) => setState(() => _difficulty = d),
+        onDurationChanged: (d) => setState(() => _duration = d),
+        onStart: _start,
       ),
-    );
+      _Phase.typing => _buildTyping(),
+      _Phase.done => TypingTestResults(
+        focusNode: _doneFocusNode,
+        difficulty: _difficulty,
+        duration: _duration,
+        elapsedSeconds: _duration.seconds - _remainingSeconds,
+        accuracy: _accuracy,
+        correctCount: _correctCount,
+        incorrectCount: _incorrectCount,
+        totalTyped: _totalTyped,
+        passageCount: _passageTitles.length,
+        onTryAgain: _tryAgain,
+      ),
+    };
   }
 
   // ── Typing ────────────────────────────────────────────────────────────────
@@ -525,19 +335,21 @@ class _TypingTestScreenState extends State<TypingTestScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _LiveStat(
+                          LiveStatItem(
                             icon: Icons.timer_outlined,
                             label: 'Remaining',
                             value: '$mins:$secs',
                             color: timerColor,
+                            compact: true,
                           ),
-                          _LiveStat(
+                          LiveStatItem(
                             icon: Icons.speed_rounded,
                             label: 'WPM',
                             value: _wpm.toStringAsFixed(0),
                             color: AppColors.secondary,
+                            compact: true,
                           ),
-                          _LiveStat(
+                          LiveStatItem(
                             icon: Icons.gps_fixed_rounded,
                             label: 'Accuracy',
                             value: '${_accuracy.toStringAsFixed(0)}%',
@@ -546,12 +358,14 @@ class _TypingTestScreenState extends State<TypingTestScreen> {
                                 : _accuracy >= 70
                                 ? AppColors.warning
                                 : AppColors.incorrect,
+                            compact: true,
                           ),
-                          _LiveStat(
+                          LiveStatItem(
                             icon: Icons.text_fields_rounded,
                             label: 'Chars',
                             value: '$_correctCount',
                             color: AppColors.accent,
+                            compact: true,
                           ),
                         ],
                       ),
@@ -587,8 +401,18 @@ class _TypingTestScreenState extends State<TypingTestScreen> {
                 // Typing area
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Center(child: _buildTypingDisplay()),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 8,
+                    ),
+                    child: Center(
+                      child: PassageTypingDisplay(
+                        text: _text,
+                        charStates: _charStates,
+                        cursorPosition: _cursor,
+                        accentColor: AppColors.accent,
+                      ),
+                    ),
                   ),
                 ),
 
@@ -630,716 +454,6 @@ class _TypingTestScreenState extends State<TypingTestScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTypingDisplay() {
-    // Show a window of text around the cursor for readability.
-    // We display up to 200 chars behind and 300 chars ahead of cursor.
-    final windowStart = (_cursor - 200).clamp(0, _text.length);
-    final windowEnd = (_cursor + 300).clamp(0, _text.length);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.accentLight, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.accent.withValues(alpha: 0.1),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: SingleChildScrollView(
-        child: Wrap(
-          alignment: WrapAlignment.center,
-          runAlignment: WrapAlignment.center,
-          children: List.generate(windowEnd - windowStart, (offset) {
-            final i = windowStart + offset;
-            final char = _text[i];
-            final state = _charStates[i];
-
-            Color bgColor;
-            Color textColor;
-            switch (state) {
-              case CharState.correct:
-                bgColor = AppColors.correct.withValues(alpha: 0.2);
-                textColor = AppColors.primaryDark;
-              case CharState.incorrect:
-                bgColor = AppColors.incorrect.withValues(alpha: 0.3);
-                textColor = AppColors.incorrect;
-              case CharState.current:
-                bgColor = AppColors.accent.withValues(alpha: 0.3);
-                textColor = AppColors.textPrimary;
-              case CharState.pending:
-                bgColor = Colors.transparent;
-                textColor = Colors.grey.shade500;
-            }
-
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 1, vertical: 2),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(3),
-                border: state == CharState.current
-                    ? const Border(
-                        bottom: BorderSide(color: AppColors.accent, width: 3),
-                      )
-                    : null,
-              ),
-              child: Text(
-                char == ' ' ? '␣' : char,
-                style: GoogleFonts.sourceCodePro(
-                  fontSize: 22,
-                  fontWeight: state == CharState.current
-                      ? FontWeight.w700
-                      : FontWeight.w500,
-                  color: textColor,
-                  letterSpacing: 1,
-                  decoration: state == CharState.incorrect
-                      ? TextDecoration.lineThrough
-                      : null,
-                ),
-              ),
-            );
-          }),
-        ),
-      ),
-    );
-  }
-
-  // ── Done ──────────────────────────────────────────────────────────────────
-
-  void _handleDoneKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
-    if (event.logicalKey == LogicalKeyboardKey.enter ||
-        event.logicalKey == LogicalKeyboardKey.space) {
-      _tryAgain();
-    } else if (event.logicalKey == LogicalKeyboardKey.escape) {
-      context.pop();
-    }
-  }
-
-  Widget _buildDone() {
-    final elapsedSecs = _duration.seconds - _remainingSeconds;
-    final mins = (elapsedSecs ~/ 60).toString().padLeft(2, '0');
-    final secs = (elapsedSecs % 60).toString().padLeft(2, '0');
-
-    // Final WPM based on actual elapsed time
-    final finalWpm = elapsedSecs > 0
-        ? (_correctCount / 5.0) / (elapsedSecs / 60.0)
-        : 0.0;
-
-    // Star rating based on WPM + accuracy
-    int stars;
-    if (finalWpm >= 60 && _accuracy >= 95) {
-      stars = 5;
-    } else if (finalWpm >= 40 && _accuracy >= 90) {
-      stars = 4;
-    } else if (finalWpm >= 25 && _accuracy >= 85) {
-      stars = 3;
-    } else if (finalWpm >= 15 && _accuracy >= 75) {
-      stars = 2;
-    } else {
-      stars = 1;
-    }
-
-    // Speed rating label
-    String speedLabel;
-    String speedEmoji;
-    if (finalWpm >= 60) {
-      speedLabel = 'Lightning Fast!';
-      speedEmoji = '⚡';
-    } else if (finalWpm >= 40) {
-      speedLabel = 'Super Speedy!';
-      speedEmoji = '🚀';
-    } else if (finalWpm >= 25) {
-      speedLabel = 'Great Job!';
-      speedEmoji = '🎉';
-    } else if (finalWpm >= 15) {
-      speedLabel = 'Good Work!';
-      speedEmoji = '👍';
-    } else {
-      speedLabel = 'Keep Practicing!';
-      speedEmoji = '💪';
-    }
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: KeyboardListener(
-        focusNode: _doneFocusNode,
-        autofocus: true,
-        onKeyEvent: _handleDoneKey,
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: Column(
-                  children: [
-                    Text(speedEmoji, style: const TextStyle(fontSize: 56)),
-                    const SizedBox(height: 8),
-                    Text(
-                      speedLabel,
-                      style: GoogleFonts.fredoka(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.accent,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_difficulty.emoji} ${_difficulty.label} · ${_duration.label} test',
-                      style: GoogleFonts.nunito(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Stars
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        5,
-                        (i) => Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                          child: Icon(
-                            i < stars
-                                ? Icons.star_rounded
-                                : Icons.star_border_rounded,
-                            color: i < stars
-                                ? AppColors.starFilled
-                                : AppColors.starEmpty,
-                            size: 36,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // ── Big WPM display ──
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.accent.withValues(alpha: 0.08),
-                            AppColors.accentLight.withValues(alpha: 0.12),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppColors.accent.withValues(alpha: 0.25),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            finalWpm.toStringAsFixed(1),
-                            style: GoogleFonts.fredoka(
-                              fontSize: 52,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.accent,
-                            ),
-                          ),
-                          Text(
-                            'Words Per Minute',
-                            style: GoogleFonts.nunito(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Stats
-                    Row(
-                      children: [
-                        _ResultStat(
-                          emoji: '⏱️',
-                          label: 'Time',
-                          value: '$mins:$secs',
-                        ),
-                        const SizedBox(width: 12),
-                        _ResultStat(
-                          emoji: '🎯',
-                          label: 'Accuracy',
-                          value: '${_accuracy.toStringAsFixed(1)}%',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        _ResultStat(
-                          emoji: '✅',
-                          label: 'Correct',
-                          value: '$_correctCount',
-                        ),
-                        const SizedBox(width: 12),
-                        _ResultStat(
-                          emoji: '❌',
-                          label: 'Errors',
-                          value: '$_incorrectCount',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        _ResultStat(
-                          emoji: '🔤',
-                          label: 'Total Chars',
-                          value: '$_totalTyped',
-                        ),
-                        const SizedBox(width: 12),
-                        _ResultStat(
-                          emoji: '📝',
-                          label: 'Passages',
-                          value: '${_passageTitles.length}',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Try again
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: _tryAgain,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accent,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.refresh_rounded, size: 24),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Test Again',
-                              style: GoogleFonts.fredoka(fontSize: 20),
-                            ),
-                            const SizedBox(width: 8),
-                            _keyBadge('Enter', Colors.white),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton.icon(
-                      onPressed: () => context.pop(),
-                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                      label: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Back',
-                            style: GoogleFonts.fredoka(fontSize: 16),
-                          ),
-                          const SizedBox(width: 6),
-                          _keyBadge('Esc', AppColors.textSecondary),
-                        ],
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Shared helpers ────────────────────────────────────────────────────────
-
-  Widget _keyBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Extracted widgets
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _DifficultyCard extends StatelessWidget {
-  final ContentDifficulty difficulty;
-  final int index;
-  final bool selected;
-  final VoidCallback onTap;
-  final Color accentColor;
-
-  const _DifficultyCard({
-    required this.difficulty,
-    required this.index,
-    required this.selected,
-    required this.onTap,
-    required this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected ? accentColor.withValues(alpha: 0.12) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? accentColor : Colors.grey.shade300,
-            width: selected ? 2.5 : 1,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: accentColor.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          children: [
-            Text(difficulty.emoji, style: const TextStyle(fontSize: 28)),
-            const SizedBox(height: 4),
-            Text(
-              difficulty.label,
-              style: GoogleFonts.fredoka(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: selected ? accentColor : AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              difficulty.description,
-              style: GoogleFonts.nunito(
-                fontSize: 11,
-                color: AppColors.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: accentColor.withValues(alpha: 0.2)),
-              ),
-              child: Text(
-                '$index',
-                style: GoogleFonts.robotoMono(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: accentColor,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TimeDurationCard extends StatelessWidget {
-  final _TestDuration duration;
-  final String shortcut;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _TimeDurationCard({
-    required this.duration,
-    required this.shortcut,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.accent.withValues(alpha: 0.12)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? AppColors.accent : Colors.grey.shade300,
-            width: selected ? 2.5 : 1,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: AppColors.accent.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          children: [
-            Text(duration.emoji, style: const TextStyle(fontSize: 22)),
-            const SizedBox(height: 3),
-            Text(
-              duration.label,
-              style: GoogleFonts.fredoka(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: selected ? AppColors.accent : AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: AppColors.accent.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: AppColors.accent.withValues(alpha: 0.2),
-                ),
-              ),
-              child: Text(
-                shortcut,
-                style: GoogleFonts.robotoMono(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.accent,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LiveStat extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _LiveStat({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 18),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: GoogleFonts.fredoka(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: GoogleFonts.nunito(
-            fontSize: 10,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ResultStat extends StatelessWidget {
-  final String emoji;
-  final String label;
-  final String value;
-
-  const _ResultStat({
-    required this.emoji,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Column(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 22)),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: GoogleFonts.fredoka(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            Text(
-              label,
-              style: GoogleFonts.nunito(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Quit confirmation dialog with keyboard shortcuts.
-class _QuitDialog extends StatefulWidget {
-  final VoidCallback onStay;
-  final VoidCallback onLeave;
-
-  const _QuitDialog({required this.onStay, required this.onLeave});
-
-  @override
-  State<_QuitDialog> createState() => _QuitDialogState();
-}
-
-class _QuitDialogState extends State<_QuitDialog> {
-  final _focusNode = FocusNode();
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  void _handleKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.keyS) {
-      widget.onStay();
-    } else if (key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.keyL) {
-      widget.onLeave();
-    }
-  }
-
-  Widget _badge(String label, Color color) => Container(
-    margin: const EdgeInsets.only(left: 6),
-    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(4),
-      border: Border.all(color: color.withValues(alpha: 0.3)),
-    ),
-    child: Text(
-      label,
-      style: GoogleFonts.robotoMono(
-        fontSize: 10,
-        fontWeight: FontWeight.w600,
-        color: color,
-      ),
-    ),
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: _handleKey,
-      child: AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'End Test?',
-          style: GoogleFonts.fredoka(
-            fontSize: 24,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        content: Text(
-          'Your test results won\'t be saved.',
-          style: GoogleFonts.nunito(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: widget.onStay,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Stay',
-                  style: GoogleFonts.fredoka(color: AppColors.primary),
-                ),
-                _badge('Esc', AppColors.primary),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: widget.onLeave,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Leave',
-                  style: GoogleFonts.fredoka(color: AppColors.incorrect),
-                ),
-                _badge('L', AppColors.incorrect),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

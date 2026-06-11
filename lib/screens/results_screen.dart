@@ -8,6 +8,7 @@ import '../core/theme/app_colors.dart';
 import '../data/lesson_curriculum_selector.dart';
 import '../models/lesson.dart';
 import '../models/typing_stats.dart';
+import '../widgets/shortcut_badge.dart';
 import '../widgets/star_rating.dart';
 
 /// Celebration screen shown after completing a lesson
@@ -69,8 +70,15 @@ class _ResultsScreenState extends State<ResultsScreen>
     }
   }
 
+  /// The next lesson to offer — only when this one was passed (a failed
+  /// attempt leaves the next lesson locked).
+  Lesson? get _nextLesson {
+    if (_passed == false) return null;
+    return LessonCurriculum.nextLesson(widget.lesson.id);
+  }
+
   void _goNextLesson() {
-    final nextLesson = LessonCurriculum.nextLesson(widget.lesson.id);
+    final nextLesson = _nextLesson;
     if (nextLesson != null) {
       context.pushReplacement('/lesson/${nextLesson.id}');
     }
@@ -78,6 +86,13 @@ class _ResultsScreenState extends State<ResultsScreen>
 
   void _retryLesson() {
     context.pushReplacement('/lesson/${widget.lesson.id}');
+  }
+
+  /// Whether this attempt met the lesson's passing accuracy.
+  /// Null for dynamic practice lessons that aren't part of the curriculum.
+  bool? get _passed {
+    if (LessonCurriculum.byId(widget.lesson.id) == null) return null;
+    return widget.stats.accuracy >= widget.lesson.passingAccuracy;
   }
 
   @override
@@ -121,6 +136,10 @@ class _ResultsScreenState extends State<ResultsScreen>
                                   _buildTitle(),
                                   const SizedBox(height: 8),
                                   _buildEncouragement(),
+                                  if (_passed != null) ...[
+                                    const SizedBox(height: 12),
+                                    _buildPassBanner(),
+                                  ],
                                   const SizedBox(height: 24),
                                   _buildStars(),
                                   const SizedBox(height: 32),
@@ -175,6 +194,10 @@ class _ResultsScreenState extends State<ResultsScreen>
               _buildTitle(),
               const SizedBox(height: 6),
               _buildEncouragement(),
+              if (_passed != null) ...[
+                const SizedBox(height: 10),
+                _buildPassBanner(),
+              ],
               const SizedBox(height: 12),
               _buildStars(),
               const SizedBox(height: 16),
@@ -246,6 +269,32 @@ class _ResultsScreenState extends State<ResultsScreen>
 
   Widget _buildStars() {
     return StarRating(rating: widget.stats.starRating, size: 48, animate: true);
+  }
+
+  Widget _buildPassBanner() {
+    final passed = _passed!;
+    final color = passed ? AppColors.correct : AppColors.warning;
+    final message = passed
+        ? 'Lesson passed! The next one is unlocked. 🎈'
+        : 'Reach ${widget.lesson.passingAccuracy}% accuracy to pass — try again!';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        message,
+        style: GoogleFonts.nunito(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
   }
 
   Widget _buildStatsGrid() {
@@ -327,7 +376,7 @@ class _ResultsScreenState extends State<ResultsScreen>
   }
 
   Widget _buildActionButtons(BuildContext context) {
-    final nextLesson = LessonCurriculum.nextLesson(widget.lesson.id);
+    final nextLesson = _nextLesson;
 
     return Column(
       children: [
@@ -358,7 +407,7 @@ class _ResultsScreenState extends State<ResultsScreen>
                       ),
                     ),
                     const SizedBox(width: 8),
-                    _ResultShortcutBadge(label: 'Enter', light: true),
+                    ShortcutBadge('Enter', light: true),
                   ],
                 ),
                 style: ElevatedButton.styleFrom(
@@ -387,7 +436,7 @@ class _ResultsScreenState extends State<ResultsScreen>
                   style: GoogleFonts.fredoka(fontSize: 20, color: Colors.white),
                 ),
                 const SizedBox(width: 8),
-                _ResultShortcutBadge(label: 'R', light: true),
+                ShortcutBadge('R', light: true),
               ],
             ),
             style: ElevatedButton.styleFrom(
@@ -413,7 +462,7 @@ class _ResultsScreenState extends State<ResultsScreen>
               children: [
                 Text('Back', style: GoogleFonts.fredoka(fontSize: 20)),
                 const SizedBox(width: 8),
-                _ResultShortcutBadge(label: 'Esc'),
+                ShortcutBadge('Esc'),
               ],
             ),
             style: OutlinedButton.styleFrom(
@@ -433,38 +482,6 @@ class _ResultsScreenState extends State<ResultsScreen>
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
-  }
-}
-
-class _ResultShortcutBadge extends StatelessWidget {
-  final String label;
-  final bool light;
-  const _ResultShortcutBadge({required this.label, this.light = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: light
-            ? Colors.white.withValues(alpha: 0.25)
-            : AppColors.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: light
-              ? Colors.white.withValues(alpha: 0.4)
-              : AppColors.primary.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: light ? Colors.white : AppColors.primary,
-        ),
-      ),
-    );
   }
 }
 

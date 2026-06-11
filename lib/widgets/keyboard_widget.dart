@@ -90,7 +90,9 @@ class KeyboardWidget extends StatelessWidget {
   }
 
   Widget _buildKey(String key) {
-    final isActive = activeKey?.toLowerCase() == key.toLowerCase();
+    final isActive =
+        activeKey != null &&
+        KeyboardData.baseKey(activeKey!) == key.toLowerCase();
     final isCorrect = correctKeys.contains(key.toLowerCase());
     final isIncorrect = incorrectKeys.contains(key.toLowerCase());
     final isHomeRow = KeyboardData.homeRowKeys.contains(key.toLowerCase());

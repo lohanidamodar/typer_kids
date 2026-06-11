@@ -8,19 +8,33 @@ A fun, colorful typing tutor built with Flutter — designed to help kids learn 
 
 ## ✨ Features
 
-### 📚 187 Structured Lessons
+### 📚 262 Structured Lessons
 - **Individual letter tracks** — each key gets dedicated intro + practice
 - **Progressive difficulty** — Beginner 🌱, Intermediate 🌿, Advanced 🌳
 - **6 categories** — Home Row, Top Row, Bottom Row, Numbers, Common Words, Sentences
+- **Themed packs** — space, ocean, animals, dinosaurs, robots, sports, music, story time, and more
+- **Punctuation practice** — periods, commas, question marks, exclamations, apostrophes
+- **Pass thresholds** — reach the lesson's accuracy goal (70/80/90% by difficulty) to unlock the next one
 - **Star ratings** (1–5 ⭐) based on accuracy
 - **Fun tips** and encouraging mascot 🐵
 
-### 🎮 3 Arcade Games
+### 🔧 Tricky Keys Practice
+The app tracks which keys each player misses most and generates a personalized
+practice lesson for them. Nail it with 90%+ accuracy and the slate is wiped clean.
+
+### 🔥 Daily Streaks & Badges
+- Practice any lesson, game, or test to keep a daily streak going
+- Earn 11 achievement badges — from 🐣 First Steps to 🕹️ Arcade Master
+
+### 🎮 6 Arcade Games
 | Game | Description |
 |------|-------------|
+| **Defend the Temple** 🏯 | Type words to zap invaders before they reach the temple. |
 | **Falling Words** ⬇️ | Type words before they hit the bottom. Lives system and streaks. |
 | **Word Bubbles** 🫧 | Pop floating bubbles by typing them before they fade away. |
 | **Speed Chase** 🏎️ | Race a ghost car — type words fast to stay in the lead. |
+| **Key Critters** 🐹 | Whack-a-mole with letters — press each critter's key before it hides. Biased toward your tricky keys! |
+| **Story Sprint** 🏃 | Type full sentences (capitals & punctuation!) to sprint down the track. |
 
 Each game has 3 difficulty levels, high score tracking, sound effects, and visual feedback (ghost indicators, color-coded match borders).
 
@@ -34,11 +48,19 @@ Each game has 3 difficulty levels, high score tracking, sound effects, and visua
 - 3 difficulty levels with classic literature passages
 - Real-time WPM and accuracy tracking
 - Timer starts on first keypress
+- Book-style typing surface that follows your cursor as you type
 
 ### 🆓 Free Practice
 - Untimed sandbox mode with story passages
-- Elapsed timer, live WPM and accuracy
+- **Pick your story** from the library, or let the app surprise you
+- Elapsed timer, live WPM, accuracy, and a passage progress bar
 - Easy / Medium / Hard content from classic children's literature
+
+### 🔤 Typing Surface
+- All typing text uses **JetBrains Mono** — fixed-width so text never
+  shifts, with clear differences between l/1/I and 0/O
+- Words never break across lines, and the view scrolls with your cursor
+- Spaces show the ␣ symbol only when they're the next key or were mistyped
 
 ### 👤 Multi-Profile Support
 - Create and switch between multiple player profiles
@@ -47,7 +69,7 @@ Each game has 3 difficulty levels, high score tracking, sound effects, and visua
 - Quick switch with number keys (1–9)
 
 ### 🔊 Sound Effects
-8 synthesized CC0 sound effects — correct, wrong, pop, miss, streak, keystroke, game start, game over — with audio pooling for smooth playback.
+8 synthesized CC0 sound effects — correct, wrong, pop, miss, streak, keystroke, game start, game over — with audio pooling for smooth playback. Lessons give audible keystroke feedback, and sounds can be toggled in Settings.
 
 ### ⚡ Keyboard Shortcuts
 Every screen supports keyboard navigation:
@@ -59,10 +81,11 @@ Every screen supports keyboard navigation:
 | `G` | Games |
 | `F` | Free Practice |
 | `T` | Typing Test |
+| `K` | Tricky Keys practice |
 | `P` | Profiles |
 | `S` | Settings |
 | `Esc` | Back |
-| `1` `2` `3` | Quick-select in game menu / profiles |
+| `1` – `6` | Quick-select in game menu / profiles |
 
 ## 🖥️ Platforms
 

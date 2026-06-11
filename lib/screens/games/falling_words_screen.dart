@@ -12,6 +12,9 @@ import '../../core/theme/app_colors.dart';
 import '../../core/sound_manager.dart';
 import '../../data/word_lists.dart';
 import '../../providers/progress_provider.dart';
+import '../../widgets/quit_dialog.dart';
+import 'widgets/falling_words_models.dart';
+import 'widgets/falling_words_views.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data types
@@ -20,39 +23,6 @@ import '../../providers/progress_provider.dart';
 enum _Phase { setup, playing, gameOver }
 
 enum _FlashType { correct, wrong }
-
-class _FallingWord {
-  final String word;
-  double x; // 0.0 – 1.0 (fraction of available width)
-  double y; // 0.0 – 1.0 (fraction of available height, 0 = top)
-  final double speed; // fraction of height per second
-  final int colorIndex;
-
-  _FallingWord({
-    required this.word,
-    required this.x,
-    required this.y,
-    required this.speed,
-    required this.colorIndex,
-  });
-}
-
-/// Brief ghost left behind when a word is destroyed or missed.
-class _Ghost {
-  final String word;
-  final double x;
-  final double y;
-  final bool success; // true = correct, false = wrong/miss
-  final int colorIndex;
-
-  _Ghost({
-    required this.word,
-    required this.x,
-    required this.y,
-    required this.success,
-    required this.colorIndex,
-  });
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Screen
@@ -84,9 +54,9 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   _Phase _phase = _Phase.setup;
   ContentDifficulty _difficulty = ContentDifficulty.easy;
 
-  final List<_FallingWord> _words = [];
+  final List<FallingWord> _words = [];
   String _input = '';
-  _FallingWord? _target;
+  FallingWord? _target;
   int _score = 0;
   int _lives = 5;
   int _wordsDestroyed = 0;
@@ -103,7 +73,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   Timer? _flashTimer;
 
   // Ghost feedback bubbles (shown at word position on pop/miss)
-  final List<_Ghost> _ghosts = [];
+  final List<FallingWordsGhost> _ghosts = [];
 
   // ── Animation ──
   late final Ticker _ticker;
@@ -265,7 +235,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     } while (_words.any((w) => w.word == word) && tries < 10);
 
     _words.add(
-      _FallingWord(
+      FallingWord(
         word: word,
         x: _random.nextDouble() * 0.70 + 0.05,
         y: -0.02,
@@ -356,7 +326,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     }
   }
 
-  void _destroyWord(_FallingWord word) {
+  void _destroyWord(FallingWord word) {
     // Add success ghost at word position
     _addGhost(word.word, word.x, word.y, true, word.colorIndex);
     _words.remove(word);
@@ -376,7 +346,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     bool success,
     int colorIndex,
   ) {
-    final ghost = _Ghost(
+    final ghost = FallingWordsGhost(
       word: word,
       x: x,
       y: y,
@@ -414,8 +384,16 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _QuitDialog(
-        onResume: () => Navigator.of(ctx).pop(),
+      builder: (ctx) => QuitDialog(
+        title: 'Quit Game?',
+        message: 'Your current score will be lost.',
+        stayLabel: 'Resume',
+        quitLabel: 'Quit',
+        stayBadge: 'Esc',
+        quitBadge: 'Q',
+        stayKey: LogicalKeyboardKey.keyR,
+        quitKey: LogicalKeyboardKey.keyQ,
+        onStay: () => Navigator.of(ctx).pop(),
         onQuit: () {
           Navigator.of(ctx).pop();
           if (mounted) context.pop();
@@ -463,158 +441,13 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   }
 
   Widget _buildSetup() {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: KeyboardListener(
-        focusNode: _setupFocusNode,
-        autofocus: true,
-        onKeyEvent: _handleSetupKey,
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final screenW = constraints.maxWidth;
-              final screenH = constraints.maxHeight;
-              final isWide = screenW > 600;
-              final isTall = screenH > 650;
-
-              final hPad = isWide ? 40.0 : 20.0;
-              final vPad = isTall ? 32.0 : 16.0;
-              final maxW = isWide ? 520.0 : screenW;
-              final headerFontSize = isWide ? 34.0 : 26.0;
-              final emojiSize = isTall ? 56.0 : 36.0;
-              final sectionGap = isTall ? 32.0 : 16.0;
-
-              return Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: hPad,
-                    vertical: vPad,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxW),
-                    child: Column(
-                      children: [
-                        // Back
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: () => context.pop(),
-                            icon: const Icon(
-                              Icons.arrow_back_rounded,
-                              size: 18,
-                            ),
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Back',
-                                  style: GoogleFonts.fredoka(fontSize: 16),
-                                ),
-                                const SizedBox(width: 6),
-                                _keyBadge('Esc', AppColors.textSecondary),
-                              ],
-                            ),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: isTall ? 16 : 8),
-                        Text('⬇️', style: TextStyle(fontSize: emojiSize)),
-                        SizedBox(height: isTall ? 8 : 4),
-                        Text(
-                          'Falling Words',
-                          style: GoogleFonts.fredoka(
-                            fontSize: headerFontSize,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Type the words before they reach the bottom!',
-                          style: GoogleFonts.nunito(
-                            fontSize: isWide ? 16.0 : 14.0,
-                            color: AppColors.textSecondary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: sectionGap),
-                        // Difficulty selector
-                        Text(
-                          'Choose Difficulty',
-                          style: GoogleFonts.fredoka(
-                            fontSize: isWide ? 20.0 : 18.0,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        SizedBox(height: isTall ? 14 : 10),
-                        Row(
-                          children: ContentDifficulty.values.map((d) {
-                            final selected = d == _difficulty;
-                            return Expanded(
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  left: d.index == 0 ? 0 : 6,
-                                  right: d.index == 2 ? 0 : 6,
-                                ),
-                                child: _DifficultyCard(
-                                  difficulty: d,
-                                  index: d.index + 1,
-                                  selected: selected,
-                                  compact: !isTall,
-                                  onTap: () => setState(() => _difficulty = d),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        SizedBox(height: sectionGap),
-                        // Start button
-                        SizedBox(
-                          width: isWide ? 280 : 220,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _startGame,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              elevation: 4,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.play_arrow_rounded, size: 28),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    'Start Game',
-                                    style: GoogleFonts.fredoka(
-                                      fontSize: isWide ? 22 : 18,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                _keyBadge('Enter', Colors.white),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
+    return FallingWordsMenu(
+      focusNode: _setupFocusNode,
+      onKeyEvent: _handleSetupKey,
+      difficulty: _difficulty,
+      onDifficultyChanged: (d) => setState(() => _difficulty = d),
+      onStart: _startGame,
+      onBack: () => context.pop(),
     );
   }
 
@@ -804,7 +637,7 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     return 22;
   }
 
-  Widget _buildWordBubble(_FallingWord word, double areaW, double areaH) {
+  Widget _buildWordBubble(FallingWord word, double areaW, double areaH) {
     final isTarget = word == _target;
     final color = _bubbleColors[word.colorIndex];
     final fontSize = _wordFontSize;
@@ -921,7 +754,11 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
     );
   }
 
-  Widget _buildGhostIndicator(_Ghost ghost, double areaW, double areaH) {
+  Widget _buildGhostIndicator(
+    FallingWordsGhost ghost,
+    double areaW,
+    double areaH,
+  ) {
     final fontSize = _wordFontSize;
     final estWidth = ghost.word.length * (fontSize * 0.7) + 48;
     final maxLeft = (areaW - estWidth).clamp(0.0, double.infinity);
@@ -1119,482 +956,18 @@ class _FallingWordsScreenState extends State<FallingWordsScreen>
   }
 
   Widget _buildGameOver() {
-    final minutes = _gameDuration.inMinutes
-        .remainder(60)
-        .toString()
-        .padLeft(2, '0');
-    final seconds = _gameDuration.inSeconds
-        .remainder(60)
-        .toString()
-        .padLeft(2, '0');
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: KeyboardListener(
-        focusNode: _overFocusNode,
-        autofocus: true,
-        onKeyEvent: _handleOverKey,
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final screenW = constraints.maxWidth;
-              final screenH = constraints.maxHeight;
-              final isWide = screenW > 600;
-              final isTall = screenH > 650;
-
-              final hPad = isWide ? 40.0 : 20.0;
-              final vPad = isTall ? 32.0 : 16.0;
-              final maxW = isWide ? 460.0 : screenW;
-              final headerFontSize = isWide ? 36.0 : 28.0;
-              final emojiSize = isTall ? 56.0 : 36.0;
-              final scoreFontSize = isTall ? 52.0 : 36.0;
-              final sectionGap = isTall ? 24.0 : 12.0;
-              final statGap = isTall ? 12.0 : 8.0;
-
-              return Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: hPad,
-                    vertical: vPad,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxW),
-                    child: Column(
-                      children: [
-                        Text('🎮', style: TextStyle(fontSize: emojiSize)),
-                        SizedBox(height: isTall ? 8 : 4),
-                        Text(
-                          'Game Over!',
-                          style: GoogleFonts.fredoka(
-                            fontSize: headerFontSize,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.accent,
-                          ),
-                        ),
-                        SizedBox(height: sectionGap),
-                        // Score
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(isTall ? 20 : 14),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.starFilled.withValues(alpha: 0.15),
-                                AppColors.secondary.withValues(alpha: 0.15),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: AppColors.starFilled.withValues(
-                                alpha: 0.4,
-                              ),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              if (_isNewHighScore)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: Text(
-                                    '⭐ New High Score! ⭐',
-                                    style: GoogleFonts.fredoka(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.accent,
-                                    ),
-                                  ),
-                                ),
-                              Text(
-                                '$_score',
-                                style: GoogleFonts.fredoka(
-                                  fontSize: scoreFontSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.starFilled,
-                                ),
-                              ),
-                              Text(
-                                'points',
-                                style: GoogleFonts.nunito(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              if (!_isNewHighScore && _highScore > 0)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    'Best: $_highScore',
-                                    style: GoogleFonts.nunito(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: sectionGap),
-                        // Stats grid
-                        Row(
-                          children: [
-                            _OverStat(
-                              emoji: '✅',
-                              label: 'Words',
-                              value: '$_wordsDestroyed',
-                            ),
-                            const SizedBox(width: 12),
-                            _OverStat(
-                              emoji: '❌',
-                              label: 'Missed',
-                              value: '$_wordsMissed',
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: statGap),
-                        Row(
-                          children: [
-                            _OverStat(
-                              emoji: '🔥',
-                              label: 'Best Streak',
-                              value: '$_bestStreak',
-                            ),
-                            const SizedBox(width: 12),
-                            _OverStat(
-                              emoji: '⏱️',
-                              label: 'Time',
-                              value: '$minutes:$seconds',
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: sectionGap + 8),
-                        // Play again
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _playAgain,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.replay_rounded, size: 24),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Play Again',
-                                  style: GoogleFonts.fredoka(fontSize: 20),
-                                ),
-                                const SizedBox(width: 8),
-                                _keyBadge('Enter', Colors.white),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton.icon(
-                          onPressed: () => context.pop(),
-                          icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Back to Games',
-                                style: GoogleFonts.fredoka(fontSize: 16),
-                              ),
-                              const SizedBox(width: 6),
-                              _keyBadge('Esc', AppColors.textSecondary),
-                            ],
-                          ),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Shared helpers ────────────────────────────────────────────────────────
-
-  Widget _keyBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Extracted widgets
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _DifficultyCard extends StatelessWidget {
-  final ContentDifficulty difficulty;
-  final int index;
-  final bool selected;
-  final bool compact;
-  final VoidCallback onTap;
-
-  const _DifficultyCard({
-    required this.difficulty,
-    required this.index,
-    required this.selected,
-    this.compact = false,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final vPad = compact ? 8.0 : 14.0;
-    final emojiSize = compact ? 22.0 : 28.0;
-    final labelSize = compact ? 14.0 : 16.0;
-    final descSize = compact ? 10.0 : 11.0;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: EdgeInsets.symmetric(vertical: vPad, horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.primary.withValues(alpha: 0.12)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? AppColors.primary : Colors.grey.shade300,
-            width: selected ? 2.5 : 1,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          children: [
-            Text(difficulty.emoji, style: TextStyle(fontSize: emojiSize)),
-            SizedBox(height: compact ? 2 : 4),
-            Text(
-              difficulty.label,
-              style: GoogleFonts.fredoka(
-                fontSize: labelSize,
-                fontWeight: FontWeight.w600,
-                color: selected ? AppColors.primary : AppColors.textPrimary,
-              ),
-            ),
-            if (!compact) ...[
-              const SizedBox(height: 2),
-              Text(
-                difficulty.description,
-                style: GoogleFonts.nunito(
-                  fontSize: descSize,
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-            SizedBox(height: compact ? 3 : 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                ),
-              ),
-              child: Text(
-                '$index',
-                style: GoogleFonts.robotoMono(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OverStat extends StatelessWidget {
-  final String emoji;
-  final String label;
-  final String value;
-
-  const _OverStat({
-    required this.emoji,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Column(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 22)),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: GoogleFonts.fredoka(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            Text(
-              label,
-              style: GoogleFonts.nunito(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Quit-game confirmation dialog with keyboard shortcuts.
-class _QuitDialog extends StatefulWidget {
-  final VoidCallback onResume;
-  final VoidCallback onQuit;
-
-  const _QuitDialog({required this.onResume, required this.onQuit});
-
-  @override
-  State<_QuitDialog> createState() => _QuitDialogState();
-}
-
-class _QuitDialogState extends State<_QuitDialog> {
-  final _focusNode = FocusNode();
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  void _handleKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.keyR) {
-      widget.onResume();
-    } else if (key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.keyQ) {
-      widget.onQuit();
-    }
-  }
-
-  Widget _badge(String label, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(left: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: _handleKey,
-      child: AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Quit Game?',
-          style: GoogleFonts.fredoka(
-            fontSize: 24,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        content: Text(
-          'Your current score will be lost.',
-          style: GoogleFonts.nunito(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: widget.onResume,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Resume',
-                  style: GoogleFonts.fredoka(color: AppColors.primary),
-                ),
-                _badge('Esc', AppColors.primary),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: widget.onQuit,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Quit',
-                  style: GoogleFonts.fredoka(color: AppColors.incorrect),
-                ),
-                _badge('Q', AppColors.incorrect),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return FallingWordsGameOver(
+      focusNode: _overFocusNode,
+      onKeyEvent: _handleOverKey,
+      score: _score,
+      isNewHighScore: _isNewHighScore,
+      highScore: _highScore,
+      wordsDestroyed: _wordsDestroyed,
+      wordsMissed: _wordsMissed,
+      bestStreak: _bestStreak,
+      gameDuration: _gameDuration,
+      onPlayAgain: _playAgain,
+      onBack: () => context.pop(),
     );
   }
 }

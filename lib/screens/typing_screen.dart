@@ -4,12 +4,16 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../core/sound_manager.dart';
 import '../core/theme/app_colors.dart';
+import '../data/practice_generator.dart';
 import '../models/lesson.dart';
 import '../providers/progress_provider.dart';
 import '../providers/typing_provider.dart';
 import '../widgets/finger_guide.dart';
 import '../widgets/keyboard_widget.dart';
+import '../widgets/quit_dialog.dart';
+import '../widgets/stat_tiles.dart';
 import '../widgets/typing_display.dart';
 
 /// The main typing practice screen where kids do the actual typing exercises
@@ -26,6 +30,7 @@ class _TypingScreenState extends State<TypingScreen> {
   late TypingProvider _typingProvider;
   final FocusNode _focusNode = FocusNode();
   final FocusNode _introFocusNode = FocusNode();
+  final _sfx = SoundManager();
   bool _showIntro = true;
   bool _isTransitioning = false;
 
@@ -35,15 +40,18 @@ class _TypingScreenState extends State<TypingScreen> {
     _typingProvider = TypingProvider();
     _typingProvider.startLesson(widget.lesson);
 
-    // Track that user started this lesson
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        Provider.of<ProgressProvider>(
-          context,
-          listen: false,
-        ).setLastLesson(widget.lesson.id);
-      }
-    });
+    // Track that user started this lesson (dynamic practice lessons aren't
+    // part of the curriculum flow, so they can't be "resumed")
+    if (widget.lesson.id != PracticeGenerator.trickyKeysLessonId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Provider.of<ProgressProvider>(
+            context,
+            listen: false,
+          ).setLastLesson(widget.lesson.id);
+        }
+      });
+    }
   }
 
   @override
@@ -84,7 +92,12 @@ class _TypingScreenState extends State<TypingScreen> {
 
     final key = event.character;
     if (key != null && key.isNotEmpty) {
-      _typingProvider.onKeyPressed(key);
+      final correct = _typingProvider.onKeyPressed(key);
+      if (correct == true) {
+        _sfx.playKeystroke();
+      } else if (correct == false) {
+        _sfx.playIncorrect();
+      }
 
       // If exercise complete but not last, auto advance after a brief moment
       if (_typingProvider.isExerciseComplete && !_typingProvider.isFinished) {
@@ -110,13 +123,14 @@ class _TypingScreenState extends State<TypingScreen> {
       context,
       listen: false,
     );
-    progressProvider.recordAttempt(widget.lesson.id, stats);
+    progressProvider.recordAttempt(widget.lesson, stats);
+    _sfx.playCelebration();
 
     Future.delayed(const Duration(milliseconds: 300), () {
       if (mounted) {
         context.pushReplacement(
           '/lesson/${widget.lesson.id}/results',
-          extra: stats,
+          extra: (widget.lesson, stats),
         );
       }
     });
@@ -478,19 +492,19 @@ class _TypingScreenState extends State<TypingScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _StatItem(
+          LiveStatItem(
             icon: Icons.timer_outlined,
             label: 'Time',
             value: _formatDuration(_typingProvider.elapsed),
             color: AppColors.primary,
           ),
-          _StatItem(
+          LiveStatItem(
             icon: Icons.speed_rounded,
             label: 'WPM',
             value: _typingProvider.liveWpm.toStringAsFixed(0),
             color: AppColors.secondary,
           ),
-          _StatItem(
+          LiveStatItem(
             icon: Icons.gps_fixed_rounded,
             label: 'Accuracy',
             value: '${_typingProvider.liveAccuracy.toStringAsFixed(0)}%',
@@ -537,12 +551,15 @@ class _TypingScreenState extends State<TypingScreen> {
   }
 
   void _showQuitDialog() {
+    _typingProvider.pause();
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => _QuitConfirmDialog(
+      builder: (dialogContext) => QuitDialog(
+        title: 'Leave Lesson?',
+        message: 'Your progress on this exercise will not be saved.',
         onStay: () => Navigator.of(dialogContext).pop(),
-        onLeave: () {
+        onQuit: () {
           Navigator.of(dialogContext).pop();
           context.pop();
         },
@@ -550,151 +567,9 @@ class _TypingScreenState extends State<TypingScreen> {
     ).then((_) {
       // Restore focus to typing area after dialog closes
       if (mounted && !_showIntro) {
+        _typingProvider.resume();
         _focusNode.requestFocus();
       }
     });
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: GoogleFonts.fredoka(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: GoogleFonts.nunito(
-            fontSize: 11,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Quit confirmation dialog with keyboard shortcuts:
-/// Esc / S = Stay, Enter / L = Leave
-class _QuitConfirmDialog extends StatefulWidget {
-  final VoidCallback onStay;
-  final VoidCallback onLeave;
-
-  const _QuitConfirmDialog({required this.onStay, required this.onLeave});
-
-  @override
-  State<_QuitConfirmDialog> createState() => _QuitConfirmDialogState();
-}
-
-class _QuitConfirmDialogState extends State<_QuitConfirmDialog> {
-  final FocusNode _dialogFocusNode = FocusNode();
-
-  @override
-  void dispose() {
-    _dialogFocusNode.dispose();
-    super.dispose();
-  }
-
-  void _handleDialogKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.keyS) {
-      widget.onStay();
-    } else if (key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.keyL) {
-      widget.onLeave();
-    }
-  }
-
-  Widget _shortcutBadge(String label, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(left: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: _dialogFocusNode,
-      autofocus: true,
-      onKeyEvent: _handleDialogKey,
-      child: AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Leave Lesson?',
-          style: GoogleFonts.fredoka(
-            fontSize: 24,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        content: Text(
-          'Your progress on this exercise will not be saved.',
-          style: GoogleFonts.nunito(fontSize: 16),
-        ),
-        actions: [
-          TextButton(
-            onPressed: widget.onStay,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Stay',
-                  style: GoogleFonts.fredoka(color: AppColors.primary),
-                ),
-                _shortcutBadge('Esc', AppColors.primary),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: widget.onLeave,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Leave',
-                  style: GoogleFonts.fredoka(color: AppColors.incorrect),
-                ),
-                _shortcutBadge('L', AppColors.incorrect),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

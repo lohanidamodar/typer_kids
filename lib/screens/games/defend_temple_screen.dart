@@ -12,6 +12,10 @@ import '../../core/theme/app_colors.dart';
 import '../../core/sound_manager.dart';
 import '../../data/word_lists.dart';
 import '../../providers/progress_provider.dart';
+import '../../widgets/quit_dialog.dart';
+import 'widgets/defend_temple_models.dart';
+import 'widgets/defend_temple_views.dart';
+import 'widgets/temple_painters.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data types
@@ -20,57 +24,6 @@ import '../../providers/progress_provider.dart';
 enum _Phase { setup, playing, gameOver }
 
 enum _FlashType { correct, wrong }
-
-class _DemonWord {
-  final String word;
-  double x; // 0.0 – 1.0 fraction of width
-  double y; // 0.0 – 1.0 fraction of height (0 = top)
-  final double speed; // fraction of height per second
-  final int colorIndex;
-
-  _DemonWord({
-    required this.word,
-    required this.x,
-    required this.y,
-    required this.speed,
-    required this.colorIndex,
-  });
-}
-
-class _Ghost {
-  final String word;
-  final double x;
-  final double y;
-  final bool success;
-  final int colorIndex;
-
-  _Ghost({
-    required this.word,
-    required this.x,
-    required this.y,
-    required this.success,
-    required this.colorIndex,
-  });
-}
-
-/// A trishul projectile flying from the temple up to a demon.
-class _Trishul {
-  final double targetX; // fraction 0..1
-  final double targetY; // fraction 0..1
-  final DateTime spawnTime;
-  static const duration = Duration(milliseconds: 650);
-
-  _Trishul({required this.targetX, required this.targetY})
-      : spawnTime = DateTime.now();
-
-  /// 0.0 = just spawned at temple, 1.0 = reached target.
-  double get progress =>
-      (DateTime.now().difference(spawnTime).inMilliseconds /
-          duration.inMilliseconds)
-          .clamp(0.0, 1.0);
-
-  bool get done => progress >= 1.0;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Screen
@@ -105,9 +58,9 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
   _Phase _phase = _Phase.setup;
   ContentDifficulty _difficulty = ContentDifficulty.easy;
 
-  final List<_DemonWord> _demons = [];
+  final List<DemonWord> _demons = [];
   String _input = '';
-  _DemonWord? _target;
+  DemonWord? _target;
   int _score = 0;
   double _templeHealth = 1.0; // 0.0 = destroyed, 1.0 = full
   int _demonsSlain = 0;
@@ -121,13 +74,13 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
 
   _FlashType? _flash;
   Timer? _flashTimer;
-  final List<_Ghost> _ghosts = [];
+  final List<TempleGhost> _ghosts = [];
 
   // Damage flash on temple
   bool _templeDamageFlash = false;
 
   // Trishul projectiles in flight
-  final List<_Trishul> _trishuls = [];
+  final List<Trishul> _trishuls = [];
 
   // ── Animation ──
   late final Ticker _ticker;
@@ -290,7 +243,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
     } while (_demons.any((d) => d.word == word) && tries < 10);
 
     _demons.add(
-      _DemonWord(
+      DemonWord(
         word: word,
         x: _random.nextDouble() * 0.70 + 0.05,
         y: -0.02,
@@ -384,9 +337,9 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
     }
   }
 
-  void _slayDemon(_DemonWord demon) {
+  void _slayDemon(DemonWord demon) {
     // Launch trishul from temple toward the demon
-    final trishul = _Trishul(targetX: demon.x, targetY: demon.y);
+    final trishul = Trishul(targetX: demon.x, targetY: demon.y);
     _trishuls.add(trishul);
 
     // Freeze the demon in place (mark for removal after trishul arrives)
@@ -404,7 +357,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
     _target = null;
 
     // After trishul reaches target, remove demon and show ghost
-    Timer(_Trishul.duration, () {
+    Timer(Trishul.duration, () {
       if (!mounted) return;
       _demons.remove(demon);
       _trishuls.remove(trishul);
@@ -420,7 +373,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
     bool success,
     int colorIndex,
   ) {
-    final ghost = _Ghost(
+    final ghost = TempleGhost(
       word: word,
       x: x,
       y: y,
@@ -458,8 +411,19 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _QuitDialog(
-        onResume: () {
+      builder: (ctx) => QuitDialog(
+        title: 'Abandon Temple?',
+        message: 'The demons will overrun the temple if you leave!',
+        stayLabel: 'Stay & Fight',
+        quitLabel: 'Retreat',
+        stayBadge: 'Esc',
+        quitBadge: 'Q',
+        stayKey: LogicalKeyboardKey.keyR,
+        quitKey: LogicalKeyboardKey.keyQ,
+        dark: true,
+        stayColor: const Color(0xFF66BB6A),
+        quitColor: const Color(0xFFFF6B6B),
+        onStay: () {
           Navigator.of(ctx).pop();
           if (_phase == _Phase.playing && mounted) {
             _lastTick = Duration.zero;
@@ -489,174 +453,13 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
 
   // ── Setup ─────────────────────────────────────────────────────────────────
 
-  void _handleSetupKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.escape) {
-      context.pop();
-    } else if (key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.space) {
-      _startGame();
-    } else if (key == LogicalKeyboardKey.digit1) {
-      setState(() => _difficulty = ContentDifficulty.easy);
-    } else if (key == LogicalKeyboardKey.digit2) {
-      setState(() => _difficulty = ContentDifficulty.medium);
-    } else if (key == LogicalKeyboardKey.digit3) {
-      setState(() => _difficulty = ContentDifficulty.hard);
-    }
-  }
-
   Widget _buildSetup() {
-    return Scaffold(
-      backgroundColor: _bgTop,
-      body: KeyboardListener(
-        focusNode: _setupFocusNode,
-        autofocus: true,
-        onKeyEvent: _handleSetupKey,
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final screenW = constraints.maxWidth;
-              final screenH = constraints.maxHeight;
-              final isWide = screenW > 600;
-              final isTall = screenH > 650;
-
-              final hPad = isWide ? 40.0 : 20.0;
-              final vPad = isTall ? 32.0 : 16.0;
-              final maxW = isWide ? 520.0 : screenW;
-              final headerFontSize = isWide ? 34.0 : 26.0;
-              final emojiSize = isTall ? 56.0 : 36.0;
-              final sectionGap = isTall ? 32.0 : 16.0;
-
-              return Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: hPad,
-                    vertical: vPad,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxW),
-                    child: Column(
-                      children: [
-                        // Back
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            onPressed: () => context.pop(),
-                            icon: const Icon(
-                              Icons.arrow_back_rounded,
-                              size: 18,
-                            ),
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Back',
-                                  style: GoogleFonts.fredoka(fontSize: 16),
-                                ),
-                                const SizedBox(width: 6),
-                                _keyBadge('Esc', Colors.white70),
-                              ],
-                            ),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.white70,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: isTall ? 12 : 6),
-                        // Header
-                        Text('🏯', style: TextStyle(fontSize: emojiSize)),
-                        SizedBox(height: isTall ? 8 : 4),
-                        Text(
-                          'Defend the Temple',
-                          style: GoogleFonts.fredoka(
-                            fontSize: headerFontSize,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFF6B6B),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Demons are attacking! Type to destroy them\nbefore they reach your temple!',
-                          style: GoogleFonts.nunito(
-                            fontSize: isWide ? 16.0 : 14.0,
-                            color: Colors.white60,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: sectionGap),
-                        // Difficulty
-                        Text(
-                          'Choose Difficulty',
-                          style: GoogleFonts.fredoka(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        SizedBox(height: isTall ? 12 : 8),
-                        Row(
-                          children: ContentDifficulty.values
-                              .asMap()
-                              .entries
-                              .map((e) {
-                            return Expanded(
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: isWide ? 6 : 4,
-                                ),
-                                child: _DifficultyCard(
-                                  difficulty: e.value,
-                                  index: e.key + 1,
-                                  selected: _difficulty == e.value,
-                                  compact: !isTall,
-                                  dark: true,
-                                  onTap: () =>
-                                      setState(() => _difficulty = e.value),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        SizedBox(height: sectionGap),
-                        // Start
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _startGame,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFB22222),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text('⚔️',
-                                    style: TextStyle(fontSize: 22)),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Defend!',
-                                  style: GoogleFonts.fredoka(fontSize: 22),
-                                ),
-                                const SizedBox(width: 8),
-                                _keyBadge('Enter', Colors.white),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
+    return DefendTempleMenu(
+      focusNode: _setupFocusNode,
+      difficulty: _difficulty,
+      onDifficultyChanged: (d) => setState(() => _difficulty = d),
+      onStart: _startGame,
+      onBack: () => context.pop(),
     );
   }
 
@@ -861,7 +664,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
         height: h * 0.18,
         child: CustomPaint(
           size: Size(w, h * 0.18),
-          painter: _MountainPainter(),
+          painter: MountainPainter(),
         ),
       ),
     );
@@ -987,7 +790,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
       ),
       child: CustomPaint(
         size: Size(double.infinity, height),
-        painter: _PagodaPainter(damageFlash: _templeDamageFlash),
+        painter: PagodaPainter(damageFlash: _templeDamageFlash),
       ),
     );
   }
@@ -1008,7 +811,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
   }
 
   Widget _buildDemonWidget(
-      _DemonWord demon, double areaW, double areaH) {
+      DemonWord demon, double areaW, double areaH) {
     final isTarget = demon == _target;
     final color = _demonColors[demon.colorIndex];
     final fontSize = _wordFontSize;
@@ -1097,7 +900,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
     );
   }
 
-  Widget _buildTrishul(_Trishul t, double areaW, double areaH) {
+  Widget _buildTrishul(Trishul t, double areaW, double areaH) {
     final startX = areaW / 2;
     final startY = areaH * (1.0 - _templeHeightFrac * 0.3);
     final endX = t.targetX * areaW;
@@ -1112,7 +915,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
-      duration: _Trishul.duration,
+      duration: Trishul.duration,
       builder: (context, p, child) {
         final eased = 1.0 - (1.0 - p) * (1.0 - p);
         final cx = startX + (endX - startX) * eased;
@@ -1168,7 +971,7 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
     );
   }
 
-  Widget _buildGhostIndicator(_Ghost ghost, double areaW, double areaH) {
+  Widget _buildGhostIndicator(TempleGhost ghost, double areaW, double areaH) {
     final fontSize = _wordFontSize;
     final estWidth = ghost.word.length * (fontSize * 0.7) + 60;
     final maxLeft = (areaW - estWidth).clamp(0.0, double.infinity);
@@ -1312,16 +1115,6 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
 
   // ── Game Over ─────────────────────────────────────────────────────────────
 
-  void _handleOverKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.space) {
-      _playAgain();
-    } else if (key == LogicalKeyboardKey.escape) {
-      context.pop();
-    }
-  }
-
   void _playAgain() {
     _phase = _Phase.setup;
     setState(() {});
@@ -1331,800 +1124,17 @@ class _DefendTempleScreenState extends State<DefendTempleScreen>
   }
 
   Widget _buildGameOver() {
-    final minutes = _gameDuration.inMinutes
-        .remainder(60)
-        .toString()
-        .padLeft(2, '0');
-    final seconds = _gameDuration.inSeconds
-        .remainder(60)
-        .toString()
-        .padLeft(2, '0');
-
-    return Scaffold(
-      backgroundColor: _bgTop,
-      body: KeyboardListener(
-        focusNode: _overFocusNode,
-        autofocus: true,
-        onKeyEvent: _handleOverKey,
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final screenW = constraints.maxWidth;
-              final screenH = constraints.maxHeight;
-              final isWide = screenW > 600;
-              final isTall = screenH > 650;
-
-              final hPad = isWide ? 40.0 : 20.0;
-              final vPad = isTall ? 32.0 : 16.0;
-              final maxW = isWide ? 460.0 : screenW;
-              final headerFontSize = isWide ? 36.0 : 28.0;
-              final emojiSize = isTall ? 56.0 : 36.0;
-              final scoreFontSize = isTall ? 52.0 : 36.0;
-              final sectionGap = isTall ? 24.0 : 12.0;
-              final statGap = isTall ? 12.0 : 8.0;
-
-              return Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: hPad,
-                    vertical: vPad,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxW),
-                    child: Column(
-                      children: [
-                        Text('💀', style: TextStyle(fontSize: emojiSize)),
-                        SizedBox(height: isTall ? 8 : 4),
-                        Text(
-                          'Temple Fallen!',
-                          style: GoogleFonts.fredoka(
-                            fontSize: headerFontSize,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFF6B6B),
-                          ),
-                        ),
-                        SizedBox(height: sectionGap),
-                        // Score
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(isTall ? 20 : 14),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.starFilled.withValues(alpha: 0.15),
-                                const Color(0xFFB22222).withValues(alpha: 0.15),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: AppColors.starFilled.withValues(alpha: 0.4),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              if (_isNewHighScore)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: Text(
-                                    '⭐ New High Score! ⭐',
-                                    style: GoogleFonts.fredoka(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFFFFD700),
-                                    ),
-                                  ),
-                                ),
-                              Text(
-                                '$_score',
-                                style: GoogleFonts.fredoka(
-                                  fontSize: scoreFontSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.starFilled,
-                                ),
-                              ),
-                              Text(
-                                'points',
-                                style: GoogleFonts.nunito(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white60,
-                                ),
-                              ),
-                              if (!_isNewHighScore && _highScore > 0)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    'Best: $_highScore',
-                                    style: GoogleFonts.nunito(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white54,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: sectionGap),
-                        // Stats
-                        Row(
-                          children: [
-                            _OverStat(
-                              emoji: '💥',
-                              label: 'Slain',
-                              value: '$_demonsSlain',
-                            ),
-                            const SizedBox(width: 12),
-                            _OverStat(
-                              emoji: '💀',
-                              label: 'Reached',
-                              value: '$_demonsReached',
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: statGap),
-                        Row(
-                          children: [
-                            _OverStat(
-                              emoji: '⚔️',
-                              label: 'Best Streak',
-                              value: '$_bestStreak',
-                            ),
-                            const SizedBox(width: 12),
-                            _OverStat(
-                              emoji: '⏱️',
-                              label: 'Time',
-                              value: '$minutes:$seconds',
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: sectionGap + 8),
-                        // Play again
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: _playAgain,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFB22222),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.replay_rounded, size: 24),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Defend Again',
-                                  style: GoogleFonts.fredoka(fontSize: 20),
-                                ),
-                                const SizedBox(width: 8),
-                                _keyBadge('Enter', Colors.white),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton.icon(
-                          onPressed: () => context.pop(),
-                          icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Back to Games',
-                                style: GoogleFonts.fredoka(fontSize: 16),
-                              ),
-                              const SizedBox(width: 6),
-                              _keyBadge('Esc', Colors.white70),
-                            ],
-                          ),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Shared helpers ────────────────────────────────────────────────────────
-
-  Widget _keyBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Pagoda painter
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _MountainPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-
-    // Far mountains (lighter, behind)
-    final farPaint = Paint()..color = const Color(0xFF0D0825);
-    final far = Path()
-      ..moveTo(0, h)
-      ..lineTo(0, h * 0.7)
-      ..lineTo(w * 0.10, h * 0.35)
-      ..lineTo(w * 0.22, h * 0.55)
-      ..lineTo(w * 0.35, h * 0.20)
-      ..lineTo(w * 0.48, h * 0.50)
-      ..lineTo(w * 0.55, h * 0.30)
-      ..lineTo(w * 0.65, h * 0.15)
-      ..lineTo(w * 0.75, h * 0.45)
-      ..lineTo(w * 0.85, h * 0.25)
-      ..lineTo(w * 0.95, h * 0.50)
-      ..lineTo(w, h * 0.60)
-      ..lineTo(w, h)
-      ..close();
-    canvas.drawPath(far, farPaint);
-
-    // Near mountains (darker, in front)
-    final nearPaint = Paint()..color = const Color(0xFF0A0620);
-    final near = Path()
-      ..moveTo(0, h)
-      ..lineTo(0, h * 0.65)
-      ..lineTo(w * 0.08, h * 0.50)
-      ..lineTo(w * 0.18, h * 0.70)
-      ..lineTo(w * 0.30, h * 0.40)
-      ..lineTo(w * 0.42, h * 0.65)
-      ..lineTo(w * 0.52, h * 0.45)
-      ..lineTo(w * 0.60, h * 0.60)
-      ..lineTo(w * 0.72, h * 0.35)
-      ..lineTo(w * 0.82, h * 0.55)
-      ..lineTo(w * 0.92, h * 0.40)
-      ..lineTo(w, h * 0.55)
-      ..lineTo(w, h)
-      ..close();
-    canvas.drawPath(near, nearPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter old) => false;
-}
-
-class _PagodaPainter extends CustomPainter {
-  final bool damageFlash;
-
-  _PagodaPainter({this.damageFlash = false});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final cx = w / 2;
-
-    // ── Palette ──
-    final wallColor =
-        damageFlash ? const Color(0xFF8B2020) : const Color(0xFF5C3A1E);
-    final roofColor =
-        damageFlash ? const Color(0xFFCC2020) : const Color(0xFF8B1A1A);
-    final roofAccent =
-        damageFlash ? const Color(0xFFFF4444) : const Color(0xFFD4AF37);
-    final grassDark = const Color(0xFF1B4332);
-    final grassLight = const Color(0xFF2D6A4F);
-    final treeTrunk = const Color(0xFF3E2723);
-    final treeLeaf = const Color(0xFF1B5E20);
-    final treeLeafLight = const Color(0xFF2E7D32);
-    final stoneColor = const Color(0xFF37474F);
-    final lanternGlow =
-        damageFlash ? const Color(0xFFFF4444) : const Color(0xFFFFAB00);
-
-    // ── Ground ──
-    // Dark earth base
-    canvas.drawRect(
-      Rect.fromLTWH(0, h * 0.78, w, h * 0.22),
-      Paint()..color = const Color(0xFF1A0F05),
-    );
-    // Grass layer
-    canvas.drawRect(
-      Rect.fromLTWH(0, h * 0.75, w, h * 0.08),
-      Paint()..color = grassDark,
-    );
-    // Grass highlights — small bumps across the width
-    final grassPath = Path()..moveTo(0, h * 0.76);
-    for (var x = 0.0; x < w; x += 8) {
-      grassPath.lineTo(x + 4, h * 0.73);
-      grassPath.lineTo(x + 8, h * 0.76);
-    }
-    grassPath.lineTo(w, h * 0.78);
-    grassPath.lineTo(0, h * 0.78);
-    grassPath.close();
-    canvas.drawPath(grassPath, Paint()..color = grassLight);
-
-    // ── Stone path to temple ──
-    final pathW = w * 0.08;
-    for (var i = 0; i < 4; i++) {
-      final sy = h * 0.80 + i * h * 0.05;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(cx - pathW / 2, sy, pathW, h * 0.03),
-          const Radius.circular(3),
-        ),
-        Paint()..color = stoneColor.withValues(alpha: 0.6 - i * 0.1),
-      );
-    }
-
-    // ── Trees ── (left and right sides)
-    void drawTree(double tx, double scale) {
-      final trunkW = 6.0 * scale;
-      final trunkH = h * 0.25 * scale;
-      final trunkTop = h * 0.75 - trunkH;
-
-      // Trunk
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(tx - trunkW / 2, trunkTop, trunkW, trunkH),
-          const Radius.circular(2),
-        ),
-        Paint()..color = treeTrunk,
-      );
-
-      // Foliage layers (3 triangles)
-      for (var i = 0; i < 3; i++) {
-        final layerW = (28.0 - i * 6) * scale;
-        final layerH = (18.0 - i * 2) * scale;
-        final layerY = trunkTop - i * layerH * 0.6;
-        final p = Path()
-          ..moveTo(tx - layerW / 2, layerY)
-          ..lineTo(tx, layerY - layerH)
-          ..lineTo(tx + layerW / 2, layerY)
-          ..close();
-        canvas.drawPath(p, Paint()..color = i.isEven ? treeLeaf : treeLeafLight);
-      }
-    }
-
-    // Left trees
-    drawTree(w * 0.06, 0.8);
-    drawTree(w * 0.15, 1.0);
-    drawTree(w * 0.24, 0.7);
-    // Right trees
-    drawTree(w * 0.76, 0.7);
-    drawTree(w * 0.85, 1.0);
-    drawTree(w * 0.94, 0.8);
-
-    // ── Side shrines ── (small pagodas on left and right)
-    void drawShrine(double sx) {
-      final sw = w * 0.08;
-      final sh = h * 0.25;
-      final sTop = h * 0.75 - sh;
-
-      // Body
-      canvas.drawRect(
-        Rect.fromLTWH(sx - sw / 2, sTop + sh * 0.4, sw, sh * 0.6),
-        Paint()..color = wallColor.withValues(alpha: 0.8),
-      );
-      // Door
-      canvas.drawRRect(
-        RRect.fromRectAndCorners(
-          Rect.fromLTWH(sx - sw * 0.15, sTop + sh * 0.6, sw * 0.3, sh * 0.4),
-          topLeft: const Radius.circular(6),
-          topRight: const Radius.circular(6),
-        ),
-        Paint()..color = const Color(0xFF0A0505),
-      );
-      // Roof
-      final rp = Path()
-        ..moveTo(sx - sw * 0.7, sTop + sh * 0.4)
-        ..lineTo(sx, sTop + sh * 0.15)
-        ..lineTo(sx + sw * 0.7, sTop + sh * 0.4)
-        ..close();
-      canvas.drawPath(rp, Paint()..color = roofColor);
-      canvas.drawPath(
-        rp,
-        Paint()
-          ..color = roofAccent
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1,
-      );
-    }
-
-    drawShrine(w * 0.30);
-    drawShrine(w * 0.70);
-
-    // ── Lanterns ── (stone posts with glowing tops)
-    void drawLantern(double lx) {
-      final postH = h * 0.12;
-      final postTop = h * 0.75 - postH;
-      // Post
-      canvas.drawRect(
-        Rect.fromLTWH(lx - 2, postTop, 4, postH),
-        Paint()..color = stoneColor,
-      );
-      // Glow
-      canvas.drawCircle(
-        Offset(lx, postTop - 2),
-        5,
-        Paint()..color = lanternGlow.withValues(alpha: 0.7),
-      );
-      canvas.drawCircle(
-        Offset(lx, postTop - 2),
-        10,
-        Paint()
-          ..color = lanternGlow.withValues(alpha: 0.15)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-      );
-    }
-
-    drawLantern(w * 0.38);
-    drawLantern(w * 0.62);
-
-    // ── Main Pagoda Temple (center) ──
-    final bodyW = w * 0.22;
-    final bodyH = h * 0.35;
-    final bodyTop = h * 0.75 - bodyH;
-    final bodyL = cx - bodyW / 2;
-
-    // Temple body
-    canvas.drawRect(
-      Rect.fromLTWH(bodyL, bodyTop + bodyH * 0.35, bodyW, bodyH * 0.65),
-      Paint()..color = wallColor,
-    );
-
-    // Pillars
-    final pillarW = bodyW * 0.06;
-    for (final px in [bodyL + bodyW * 0.15, bodyL + bodyW * 0.85 - pillarW]) {
-      canvas.drawRect(
-        Rect.fromLTWH(px, bodyTop + bodyH * 0.38, pillarW, bodyH * 0.6),
-        Paint()..color = roofAccent.withValues(alpha: 0.4),
-      );
-    }
-
-    // Door
-    final doorW = bodyW * 0.25;
-    final doorH = bodyH * 0.35;
-    canvas.drawRRect(
-      RRect.fromRectAndCorners(
-        Rect.fromLTWH(cx - doorW / 2, bodyTop + bodyH - doorH, doorW, doorH),
-        topLeft: const Radius.circular(10),
-        topRight: const Radius.circular(10),
-      ),
-      Paint()..color = const Color(0xFF0A0505),
-    );
-    // Door glow
-    canvas.drawRRect(
-      RRect.fromRectAndCorners(
-        Rect.fromLTWH(cx - doorW / 2, bodyTop + bodyH - doorH, doorW, doorH),
-        topLeft: const Radius.circular(10),
-        topRight: const Radius.circular(10),
-      ),
-      Paint()
-        ..color = lanternGlow.withValues(alpha: 0.08)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
-    );
-
-    // Roof tiers (3 levels)
-    for (var i = 0; i < 3; i++) {
-      final tierScale = 1.0 - i * 0.25;
-      final tierW = (bodyW + 30) * tierScale;
-      final tierH = bodyH * 0.1;
-      final tierY = bodyTop + bodyH * 0.32 - i * tierH * 1.4;
-
-      final path = Path()
-        ..moveTo(cx - tierW / 2 - 8, tierY + tierH)
-        ..quadraticBezierTo(cx - tierW / 2 - 14, tierY + tierH - 4,
-            cx - tierW * 0.35, tierY)
-        ..lineTo(cx + tierW * 0.35, tierY)
-        ..quadraticBezierTo(
-            cx + tierW / 2 + 14, tierY + tierH - 4,
-            cx + tierW / 2 + 8, tierY + tierH)
-        ..close();
-      canvas.drawPath(path, Paint()..color = roofColor);
-      canvas.drawPath(
-        path,
-        Paint()
-          ..color = roofAccent
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.2,
-      );
-    }
-
-    // Spire
-    final spireBase = bodyTop + bodyH * 0.32 - 3 * (bodyH * 0.1) * 1.4;
-    final spireTop = spireBase - h * 0.06;
-    canvas.drawLine(
-      Offset(cx, spireTop),
-      Offset(cx, spireBase + 4),
-      Paint()
-        ..color = roofAccent
-        ..strokeWidth = 2.5,
-    );
-    canvas.drawCircle(
-      Offset(cx, spireTop),
-      4,
-      Paint()..color = roofAccent,
-    );
-    // Spire glow
-    canvas.drawCircle(
-      Offset(cx, spireTop),
-      8,
-      Paint()
-        ..color = lanternGlow.withValues(alpha: 0.15)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _PagodaPainter old) =>
-      damageFlash != old.damageFlash;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Extracted widgets
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _DifficultyCard extends StatelessWidget {
-  final ContentDifficulty difficulty;
-  final int index;
-  final bool selected;
-  final bool compact;
-  final bool dark;
-  final VoidCallback onTap;
-
-  const _DifficultyCard({
-    required this.difficulty,
-    required this.index,
-    required this.selected,
-    this.compact = false,
-    this.dark = false,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final vPad = compact ? 8.0 : 14.0;
-    final emojiSize = compact ? 22.0 : 28.0;
-    final labelSize = compact ? 14.0 : 16.0;
-    final descSize = compact ? 10.0 : 11.0;
-
-    final accentColor = const Color(0xFFB22222);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: EdgeInsets.symmetric(vertical: vPad, horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected
-              ? accentColor.withValues(alpha: 0.2)
-              : dark
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? accentColor : Colors.white24,
-            width: selected ? 2.5 : 1,
-          ),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: accentColor.withValues(alpha: 0.25),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Column(
-          children: [
-            Text(difficulty.emoji, style: TextStyle(fontSize: emojiSize)),
-            SizedBox(height: compact ? 2 : 4),
-            Text(
-              difficulty.label,
-              style: GoogleFonts.fredoka(
-                fontSize: labelSize,
-                fontWeight: FontWeight.w600,
-                color: selected ? accentColor : Colors.white70,
-              ),
-            ),
-            if (!compact) ...[
-              const SizedBox(height: 2),
-              Text(
-                difficulty.description,
-                style: GoogleFonts.nunito(
-                  fontSize: descSize,
-                  color: Colors.white38,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-            SizedBox(height: compact ? 3 : 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: accentColor.withValues(alpha: 0.3)),
-              ),
-              child: Text(
-                '$index',
-                style: GoogleFonts.robotoMono(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: accentColor,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _OverStat extends StatelessWidget {
-  final String emoji;
-  final String label;
-  final String value;
-
-  const _OverStat({
-    required this.emoji,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white12),
-        ),
-        child: Column(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 22)),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: GoogleFonts.fredoka(
-                fontSize: 22,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-            Text(
-              label,
-              style: GoogleFonts.nunito(
-                fontSize: 12,
-                color: Colors.white54,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _QuitDialog extends StatefulWidget {
-  final VoidCallback onResume;
-  final VoidCallback onQuit;
-
-  const _QuitDialog({required this.onResume, required this.onQuit});
-
-  @override
-  State<_QuitDialog> createState() => _QuitDialogState();
-}
-
-class _QuitDialogState extends State<_QuitDialog> {
-  final _focusNode = FocusNode();
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  void _handleKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return;
-    final key = event.logicalKey;
-    if (key == LogicalKeyboardKey.escape || key == LogicalKeyboardKey.keyR) {
-      widget.onResume();
-    } else if (key == LogicalKeyboardKey.enter ||
-        key == LogicalKeyboardKey.keyQ) {
-      widget.onQuit();
-    }
-  }
-
-  Widget _badge(String label, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(left: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.robotoMono(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return KeyboardListener(
-      focusNode: _focusNode,
-      autofocus: true,
-      onKeyEvent: _handleKey,
-      child: AlertDialog(
-        backgroundColor: const Color(0xFF1A1040),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Abandon Temple?',
-          style: GoogleFonts.fredoka(fontSize: 24, color: Colors.white),
-        ),
-        content: Text(
-          'The demons will overrun the temple if you leave!',
-          style: GoogleFonts.nunito(fontSize: 16, color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: widget.onResume,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Stay & Fight',
-                  style: GoogleFonts.fredoka(color: const Color(0xFF66BB6A)),
-                ),
-                _badge('Esc', const Color(0xFF66BB6A)),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: widget.onQuit,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Retreat',
-                  style: GoogleFonts.fredoka(color: const Color(0xFFFF6B6B)),
-                ),
-                _badge('Q', const Color(0xFFFF6B6B)),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return DefendTempleGameOver(
+      focusNode: _overFocusNode,
+      score: _score,
+      isNewHighScore: _isNewHighScore,
+      highScore: _highScore,
+      demonsSlain: _demonsSlain,
+      demonsReached: _demonsReached,
+      bestStreak: _bestStreak,
+      gameDuration: _gameDuration,
+      onPlayAgain: _playAgain,
+      onBack: () => context.pop(),
     );
   }
 }
