@@ -79,7 +79,7 @@ class Badges {
       id: 'arcade_master',
       emoji: '🕹️',
       title: 'Arcade Master',
-      description: 'Score points in all 4 games',
+      description: 'Score points in every game',
     ),
     AchievementBadge(
       id: 'accuracy_ace',
@@ -89,17 +89,20 @@ class Badges {
     ),
   ];
 
-  static const List<String> _gameIds = [
+  /// IDs used with [ProgressProvider.recordScore] — one per arcade game.
+  static const List<String> gameIds = [
     'falling_words',
     'word_bubbles',
     'speed_chase',
     'defend_temple',
+    'key_critters',
+    'story_sprint',
   ];
 
   /// Which badges the current profile has earned.
   static List<AchievementBadge> earned(ProgressProvider progress) {
     final highScores = progress.allHighScores;
-    final gamesPlayed = _gameIds
+    final gamesPlayed = gameIds
         .where((id) => (highScores[id] ?? 0) > 0)
         .length;
 
@@ -113,7 +116,7 @@ class Badges {
       'streak_3' => progress.currentStreak >= 3,
       'streak_7' => progress.currentStreak >= 7,
       'gamer' => gamesPlayed >= 1,
-      'arcade_master' => gamesPlayed >= _gameIds.length,
+      'arcade_master' => gamesPlayed >= gameIds.length,
       'accuracy_ace' =>
         progress.completedLessons >= 10 && progress.averageAccuracy >= 95,
       _ => false,

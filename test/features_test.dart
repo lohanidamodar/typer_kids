@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:typer_kids/data/badges.dart';
 import 'package:typer_kids/data/lesson_curriculum_comprehensive.dart';
 import 'package:typer_kids/data/practice_generator.dart';
+import 'package:typer_kids/data/sentence_lists.dart';
+import 'package:typer_kids/data/word_lists.dart';
 import 'package:typer_kids/models/lesson.dart';
 import 'package:typer_kids/models/typing_stats.dart';
 import 'package:typer_kids/providers/progress_provider.dart';
@@ -323,6 +325,53 @@ void main() {
       expect(earned, contains('first_lesson'));
       expect(earned, contains('gamer'));
       expect(earned, isNot(contains('arcade_master')));
+    });
+
+    test('arcade master requires a score in every game', () async {
+      SharedPreferences.setMockInitialValues({});
+      final provider = ProgressProvider();
+      await provider.init();
+
+      for (final gameId in Badges.gameIds) {
+        expect(
+          Badges.earned(provider).map((b) => b.id),
+          isNot(contains('arcade_master')),
+        );
+        await provider.recordScore(gameId, 100);
+      }
+      expect(
+        Badges.earned(provider).map((b) => b.id),
+        contains('arcade_master'),
+      );
+    });
+  });
+
+  group('SentenceLists', () {
+    test('every pool has plenty of non-empty sentences', () {
+      for (final d in ContentDifficulty.values) {
+        final pool = SentenceLists.forDifficulty(d);
+        expect(pool.length, greaterThanOrEqualTo(15), reason: d.label);
+        for (final sentence in pool) {
+          expect(sentence.trim(), isNotEmpty);
+          // No double spaces — they'd be invisible but block progress
+          expect(sentence.contains('  '), isFalse, reason: sentence);
+        }
+      }
+    });
+
+    test('easy sentences avoid shifted characters', () {
+      for (final sentence in SentenceLists.easy) {
+        expect(
+          RegExp(r'^[a-z0-9 .,]+$').hasMatch(sentence),
+          isTrue,
+          reason: sentence,
+        );
+      }
+    });
+
+    test('shuffledFor returns the whole pool', () {
+      final shuffled = SentenceLists.shuffledFor(ContentDifficulty.medium);
+      expect(shuffled.toSet(), SentenceLists.medium.toSet());
     });
   });
 }

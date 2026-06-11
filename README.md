@@ -26,13 +26,15 @@ practice lesson for them. Nail it with 90%+ accuracy and the slate is wiped clea
 - Practice any lesson, game, or test to keep a daily streak going
 - Earn 11 achievement badges — from 🐣 First Steps to 🕹️ Arcade Master
 
-### 🎮 4 Arcade Games
+### 🎮 6 Arcade Games
 | Game | Description |
 |------|-------------|
 | **Defend the Temple** 🏯 | Type words to zap invaders before they reach the temple. |
 | **Falling Words** ⬇️ | Type words before they hit the bottom. Lives system and streaks. |
 | **Word Bubbles** 🫧 | Pop floating bubbles by typing them before they fade away. |
 | **Speed Chase** 🏎️ | Race a ghost car — type words fast to stay in the lead. |
+| **Key Critters** 🐹 | Whack-a-mole with letters — press each critter's key before it hides. Biased toward your tricky keys! |
+| **Story Sprint** 🏃 | Type full sentences (capitals & punctuation!) to sprint down the track. |
 
 Each game has 3 difficulty levels, high score tracking, sound effects, and visual feedback (ghost indicators, color-coded match borders).
 
@@ -75,7 +77,7 @@ Every screen supports keyboard navigation:
 | `P` | Profiles |
 | `S` | Settings |
 | `Esc` | Back |
-| `1` `2` `3` `4` | Quick-select in game menu / profiles |
+| `1` – `6` | Quick-select in game menu / profiles |
 
 ## 🖥️ Platforms
 

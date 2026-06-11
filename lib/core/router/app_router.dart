@@ -11,7 +11,9 @@ import '../../providers/progress_provider.dart';
 import '../../screens/games/defend_temple_screen.dart';
 import '../../screens/games/falling_words_screen.dart';
 import '../../screens/games/game_menu_screen.dart';
+import '../../screens/games/key_critters_screen.dart';
 import '../../screens/games/speed_chase_screen.dart';
+import '../../screens/games/story_sprint_screen.dart';
 import '../../screens/games/word_bubbles_screen.dart';
 import '../../screens/home_screen.dart';
 import '../../screens/lesson_list_screen.dart';
@@ -153,6 +155,18 @@ class AppRouter {
             name: 'defend-temple',
             parentNavigatorKey: _rootNavigatorKey,
             builder: (context, state) => const DefendTempleScreen(),
+          ),
+          GoRoute(
+            path: 'key-critters',
+            name: 'key-critters',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const KeyCrittersScreen(),
+          ),
+          GoRoute(
+            path: 'story-sprint',
+            name: 'story-sprint',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const StorySprintScreen(),
           ),
         ],
       ),

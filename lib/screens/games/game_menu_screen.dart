@@ -36,6 +36,10 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
       context.push('/games/word-bubbles');
     } else if (key == LogicalKeyboardKey.digit4) {
       context.push('/games/speed-chase');
+    } else if (key == LogicalKeyboardKey.digit5) {
+      context.push('/games/key-critters');
+    } else if (key == LogicalKeyboardKey.digit6) {
+      context.push('/games/story-sprint');
     }
   }
 
@@ -105,6 +109,26 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                   compact: !isTall,
                   onTap: () => context.push('/games/speed-chase'),
                 ),
+                _GameCard(
+                  emoji: '🐹',
+                  title: 'Key Critters',
+                  description:
+                      'Bonk the critters by pressing their keys!',
+                  shortcut: '5',
+                  color: const Color(0xFF43A047),
+                  compact: !isTall,
+                  onTap: () => context.push('/games/key-critters'),
+                ),
+                _GameCard(
+                  emoji: '🏃',
+                  title: 'Story Sprint',
+                  description:
+                      'Type full sentences to sprint down the track!',
+                  shortcut: '6',
+                  color: const Color(0xFFFB8C00),
+                  compact: !isTall,
+                  onTap: () => context.push('/games/story-sprint'),
+                ),
               ];
 
               return Center(
@@ -165,24 +189,22 @@ class _GameMenuScreenState extends State<GameMenuScreen> {
                         SizedBox(height: sectionGap),
                         // ── Game cards ──
                         if (useGrid) ...[
-                          // 2x2 grid
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: gameCards[0]),
-                              SizedBox(width: cardGap),
-                              Expanded(child: gameCards[1]),
-                            ],
-                          ),
-                          SizedBox(height: cardGap),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: gameCards[2]),
-                              SizedBox(width: cardGap),
-                              Expanded(child: gameCards[3]),
-                            ],
-                          ),
+                          // Two cards per row
+                          for (var i = 0; i < gameCards.length; i += 2) ...[
+                            if (i > 0) SizedBox(height: cardGap),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: gameCards[i]),
+                                SizedBox(width: cardGap),
+                                Expanded(
+                                  child: i + 1 < gameCards.length
+                                      ? gameCards[i + 1]
+                                      : const SizedBox.shrink(),
+                                ),
+                              ],
+                            ),
+                          ],
                         ] else ...[
                           // Vertical list
                           for (var i = 0; i < gameCards.length; i++) ...[
